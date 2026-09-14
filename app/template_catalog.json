@@ -1,0 +1,40 @@
+{
+  "sasa_202607001": {
+    "slots": 1,
+    "fields": {
+      "hk_mo_price": "MO",
+      "brand_name": "Cyber Colors",
+      "product_name": "亮澤保濕卸妝潔面凝膠 150ml",
+      "price_recommended": "MOP198/件",
+      "price_vip": "MOP132/件",
+      "star_price": "",
+      "price_non_vip": "",
+      "sell_price": "",
+      "fab": "溶解彩妝，清除角質\n滋潤肌膚不繃緊",
+      "discount_ball": "67折#",
+      "tnc": "#以上折扣以VIP價計算",
+      "icon_text": "獨家發售",
+      "gwp_text": "買即送洗面乳30ml (價值$99)",
+      "gwp_image": "https://example.com/gwp_image.png"
+    }
+  },
+  "sasa_202609001": {
+    "slots": 2,
+    "fields": {
+      "hk_mo_price": "HK or MO (per panel)",
+      "brand_name": "UNOVE",
+      "product_name": "深度損傷頭髮修護洗頭水 500G",
+      "price_recommended": "$135/件",
+      "price_vip": "$99/件",
+      "star_price": "$128",
+      "price_non_vip": "",
+      "sell_price": "",
+      "fab": "有助清爽頭皮\n軟化髮絲",
+      "discount_ball": "74折",
+      "tnc": "可以與VIP優惠同時使用",
+      "icon_text": "獨家代理",
+      "gwp_text": "贈品說明",
+      "gwp_image": "Gift image reference or list of references"
+    }
+  }
+}
