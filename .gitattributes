@@ -1,3 +1,4 @@
 * text=auto eol=lf
 renderer/** -text
 renderer/**/licenses/** -whitespace
+renderer/**/manifest.json whitespace=cr-at-eol
