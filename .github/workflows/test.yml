@@ -12,3 +12,5 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests
+      - name: Verify the packaged Linux executable in its runtime container
+        run: docker build --tag posm-templates-v2:test .

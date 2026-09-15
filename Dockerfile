@@ -6,5 +6,5 @@ COPY app ${LAMBDA_TASK_ROOT}/app
 COPY renderer ${LAMBDA_TASK_ROOT}/renderer
 COPY render_service.py worker.py lambda_handler.py templates_api.py ${LAMBDA_TASK_ROOT}/
 ENV POSM_LOG_DIR=/tmp/posm-logs
-RUN python -c "from app.native import Bundle; Bundle.configured().verify()"
+RUN python -c "from app.native import Bundle; result = Bundle.configured().invoke({'protocol_version': 1, 'request_id': 'container-build', 'method': 'describe'}); assert result['devtools'] is False"
 CMD ["lambda_handler.handler"]

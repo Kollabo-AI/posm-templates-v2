@@ -15,8 +15,9 @@ Use Python 3.12 and install `requirements.txt`. A platform-matched verified bund
 must be installed under `renderer/windows-x86_64` or `renderer/linux-x86_64` and
 its manifest hash pinned in `app/release_pin.py`.
 
-Windows also needs the Microsoft Visual C++ 2015–2022 x64 runtime. The initial
-checked-in bundle targets Windows x86-64; Linux artifact verification is pending.
+Windows and Amazon Linux 2023 x86-64 bundles are included. Windows also needs
+the Microsoft Visual C++ 2015–2022 x64 runtime. The Linux executable is built
+and checked in the pinned Lambda base image.
 
 ```
 python -m unittest discover -s tests
