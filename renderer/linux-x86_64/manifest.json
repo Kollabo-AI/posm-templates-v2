@@ -152,10 +152,10 @@
     "assets/licenses/zmij-1.0.23/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "assets/templates/sasa_202607001.png": "4129b52cbb0a7a5806ea74fb5f780d66606d53785714f62a80120e402d410251",
     "assets/templates/sasa_202609001.png": "b517f3713e0e121f274b2ebe8bd108b76df53ba49934ae6299a186d377261773",
-    "posm-renderer": "6f07de493ee2bde1f019d17f7a693240db837f3c1f094f35592d1a31c830f86d"
+    "posm-renderer": "bcbaa70d12353c403ab7d536bfcae719864f178723ce4289f80cf10857cb7da5"
   },
   "protocol_version": 1,
-  "renderer_version": "0.1.0",
+  "renderer_version": "0.1.1",
   "schema_version": 1,
   "target": "x86_64-unknown-linux-gnu"
 }
