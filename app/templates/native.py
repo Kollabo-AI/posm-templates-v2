@@ -40,11 +40,13 @@ class Pipeline(POSMImplementation):
             resources: dict[str, dict[str, Any]] = {}
             reference_ids: dict[str, str] = {}
 
-            def prepare(reference: str) -> str:
+            def prepare(reference: str) -> str | None:
                 if reference in reference_ids:
                     return reference_ids[reference]
                 image = self.maybe_load_image_from_url(reference)
                 if image is None:
+                    if self.name == "sasa_202607006":
+                        return None
                     raise RendererError("IMAGE_LOAD_FAILED")
                 with image:
                     bounds = image.getchannel("A").getbbox()
@@ -71,14 +73,15 @@ class Pipeline(POSMImplementation):
                 for key in ("brand_name", "product_name"):
                     normalized[key] = required_text(fields, key)
                 for key in ("price_recommended", "fab"):
-                    normalized[key] = required_text(fields, key) if self.name == "sasa_202607001" else optional_text(fields, key) or ""
+                    normalized[key] = required_text(fields, key) if self.name in {"sasa_202607001", "sasa_202607006"} else optional_text(fields, key) or ""
                 normalized["price_recommended"] = recommended_price(str(normalized["price_recommended"]), region)
                 vip, star = preprocess_vip_and_star_prices(optional_text(fields, "price_vip"), optional_text(fields, "star_price"), region)
                 normalized["price_vip"], normalized["star_price"] = vip, star or ""
                 normalized["gwp_text"] = normalize_currency_markers(optional_text(fields, "gwp_text"), region) or ""
-                normalized["gwp_image"] = [prepare(ref) for ref in gwp_image_references(fields)]
+                normalized["gwp_image"] = [image_id for ref in gwp_image_references(fields)
+                                           if (image_id := prepare(ref)) is not None]
                 fields_list.append(normalized)
-                products.append([prepare(ref) for ref in images])
+                products.append([image_id for ref in images if (image_id := prepare(ref)) is not None])
             response = Bundle.configured().invoke({
                 "protocol_version": 1, "request_id": self._get_run_id(), "method": "render",
                 "params": {"template": self.name, "promotion_list": fields_list, "product": products},

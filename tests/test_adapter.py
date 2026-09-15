@@ -57,6 +57,33 @@ class AdapterTests(unittest.TestCase):
         self.assertIsNone(result.fabric_model)
         self.assertIn("RENDERER_FILE_CHECKSUM", result.message or "")
 
+    def test_07006_filters_failed_images_and_preserves_empty_gift_caption(self) -> None:
+        calls: list[dict] = []
+
+        def invoke(bundle: Bundle, request: dict) -> dict:
+            calls.append(request)
+            root = Path(request["options"]["output_dir"])
+            Image.new("RGB", (4, 4), "white").save(root / "preview.png")
+            (root / "fabric.json").write_text(json.dumps({"version": "6.6.5", "width": 4, "height": 4, "objects": []}))
+            return {"preview": "preview.png", "fabric": "fabric.json"}
+
+        params = CreateParams(template="sasa_202607006", promotion_list=[{
+            "hk_mo_price": "MO", "brand_name": "Brand", "product_name": "Product",
+            "price_recommended": "$195", "price_vip": "128", "fab": "Feature",
+            "gwp_image": ["bad-image"], "gwp_text": "",
+        }], product=[["bad-image"]])
+        pipeline = get_pipeline(params.template)
+        with patch.object(Bundle, "configured", return_value=Bundle(Path.cwd(), "test")), \
+             patch.object(Bundle, "invoke", invoke), \
+             patch.object(pipeline, "maybe_load_image_from_url", return_value=None):
+            result = pipeline.run(params)
+        self.assertTrue(result.successful)
+        self.assertEqual(calls[0]["params"]["product"], [[]])
+        fields = calls[0]["params"]["promotion_list"][0]
+        self.assertEqual(fields["gwp_image"], [])
+        self.assertEqual(fields["gwp_text"], "")
+        self.assertEqual(fields["price_vip"], "MOP128")
+
 
 if __name__ == "__main__":
     unittest.main()

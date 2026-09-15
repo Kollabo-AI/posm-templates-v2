@@ -65,7 +65,13 @@ class ContractTests(unittest.TestCase):
 
     def test_unported_template_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            CreateParams(template="sasa_202607006", promotion_list=[{}], product=[[]])
+            CreateParams(template="sasa_202607005", promotion_list=[{}], product=[[]])
+
+    def test_07006_requires_exactly_one_promotion_and_product_list(self) -> None:
+        item = CreateParams(template="sasa_202607006", promotion_list=[{}], product=[[]])
+        self.assertEqual(len(item.promotion_list), 1)
+        with self.assertRaises(ValueError):
+            CreateParams(template="sasa_202607006", promotion_list=[{}, {}], product=[[], []])
 
 
 if __name__ == "__main__":
