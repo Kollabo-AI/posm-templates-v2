@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/var/lang/bin/python3
 """Start the local AWS Workload Credentials Provider before Lambda runtime init."""
 
 from __future__ import annotations

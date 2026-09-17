@@ -18,7 +18,8 @@ COPY renderer/linux-x86_64 ${LAMBDA_TASK_ROOT}/renderer/linux-x86_64
 COPY render_service.py worker.py lambda_handler.py templates_api.py asm-exec lambda_entrypoint.py ${LAMBDA_TASK_ROOT}/
 COPY --from=workload-credentials-provider /build/aws-workload-credentials-provider/target/release/aws-workload-credentials-provider /opt/bin/aws-workload-credentials-provider
 COPY lambda_secrets_extension.py /opt/extensions/secrets-manager-provider-extension
-RUN chmod 0555 ${LAMBDA_TASK_ROOT}/asm-exec /opt/bin/aws-workload-credentials-provider /opt/extensions/secrets-manager-provider-extension ${LAMBDA_TASK_ROOT}/renderer/linux-x86_64/posm-renderer
+RUN chmod 0555 ${LAMBDA_TASK_ROOT}/asm-exec /opt/bin/aws-workload-credentials-provider /opt/extensions/secrets-manager-provider-extension ${LAMBDA_TASK_ROOT}/renderer/linux-x86_64/posm-renderer \
+    && test -x /var/lang/bin/python3
 ENV POSM_LOG_DIR=/tmp/posm-logs
 RUN python -c "from app.native import Bundle; from app.template_contract import NATIVE_TEMPLATES; result = Bundle.configured().invoke({'protocol_version': 1, 'request_id': 'container-build', 'method': 'describe'}); assert result['devtools'] is False; assert {t['id'] for t in result['templates']} == set(NATIVE_TEMPLATES)"
 ENTRYPOINT ["python3", "/var/task/lambda_entrypoint.py"]

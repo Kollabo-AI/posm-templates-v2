@@ -44,6 +44,24 @@ fi
 
 # Record a rollback target before CloudFormation changes code and architecture.
 aws lambda get-function --function-name "$function_arn" --query '{Image:Code.ImageUri,Architecture:Configuration.Architectures[0]}' > rollback.json
+deployment_changed=false
+rollback_on_error() {
+  local status=$?
+  trap - ERR
+  if [ "$deployment_changed" = true ]; then
+    echo 'Dev verification failed; restoring the previous image and architecture' >&2
+    jq --slurpfile previous rollback.json 'map(
+      if . == "DevPosterImageUri" then {ParameterKey:.,ParameterValue:$previous[0].Image}
+      elif . == "DevPosterArchitecture" then {ParameterKey:.,ParameterValue:$previous[0].Architecture}
+      else {ParameterKey:.,UsePreviousValue:true} end
+    )' parameter-keys.json > rollback-parameters.json
+    if aws cloudformation update-stack --stack-name "$STACK_NAME" --use-previous-template --parameters file://rollback-parameters.json --capabilities CAPABILITY_NAMED_IAM; then
+      aws cloudformation wait stack-update-complete --stack-name "$STACK_NAME" || true
+    fi
+  fi
+  exit "$status"
+}
+trap rollback_on_error ERR
 started=false
 no_change=false
 for _ in $(seq 1 30); do
@@ -57,7 +75,7 @@ for _ in $(seq 1 30); do
     else {ParameterKey:.,UsePreviousValue:true} end
   )' parameter-keys.json > update-parameters.json
   if update_output="$(aws cloudformation update-stack --stack-name "$STACK_NAME" --use-previous-template --parameters file://update-parameters.json --capabilities CAPABILITY_NAMED_IAM 2>&1)"; then
-    started=true; break
+    started=true; deployment_changed=true; break
   elif [[ "$update_output" == *"No updates are to be performed"* ]]; then
     no_change=true; break
   elif [[ "$update_output" == *"_IN_PROGRESS"* ]]; then
@@ -76,6 +94,9 @@ test "$(aws lambda get-function --function-name "$function_arn" --query Code.Ima
 test "$(aws lambda get-function-configuration --function-name "$function_arn" --query 'Architectures[0]' --output text)" = x86_64
 test "$(aws lambda get-event-source-mapping --uuid "$mapping_id" --query State --output text)" = Enabled
 aws lambda invoke --function-name "$function_arn" --cli-binary-format raw-in-base64-out --payload '{"Records":[]}' response.json > invoke-metadata.json
+if jq -e 'has("FunctionError")' invoke-metadata.json >/dev/null; then
+  cat invoke-metadata.json response.json >&2
+fi
 jq -e 'has("FunctionError") | not' invoke-metadata.json >/dev/null
 jq -e '. == {batchItemFailures:[]}' response.json >/dev/null
 {
