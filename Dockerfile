@@ -6,7 +6,11 @@ RUN tar -xzf /tmp/provider.tar.gz --strip-components=1 \
     && test "$(./target/release/aws-workload-credentials-provider --version)" = "aws-workload-credentials-provider 3.1.1"
 
 FROM public.ecr.aws/lambda/python:3.12@sha256:beae84cc45e41c80aa709a11f702b452a8aea4141700cdbab47ac4a6c181113f
-RUN dnf --releasever 2023.12.20260831 install -y fontconfig libstdc++ && dnf clean all
+# ALAS2023-2026-2136 fixes the OpenSSL HIGH findings in the pinned base image.
+RUN dnf --releasever 2023.12.20260914 install -y fontconfig libstdc++ \
+        openssl-fips-provider-latest-3.5.8-1.amzn2023.0.1 \
+        openssl-snapsafe-libs-3.5.8-1.amzn2023.0.1 \
+    && dnf clean all
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 COPY app ${LAMBDA_TASK_ROOT}/app

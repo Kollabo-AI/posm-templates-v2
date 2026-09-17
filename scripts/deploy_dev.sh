@@ -37,8 +37,10 @@ done
 test "$scan_status" = COMPLETE
 severe="$(aws ecr describe-image-scan-findings --repository-name "$repository_name" --image-id "imageDigest=$digest" --query 'imageScanFindings.findingSeverityCounts.[CRITICAL,HIGH]' --output text)"
 read -r critical high <<<"$severe"
-test "${critical/None/0}" = 0
-test "${high/None/0}" = 0
+if [ "${critical/None/0}" != 0 ] || [ "${high/None/0}" != 0 ]; then
+  echo "ECR scan blocked deployment: ${critical/None/0} critical and ${high/None/0} high findings" >&2
+  exit 1
+fi
 
 # Record a rollback target before CloudFormation changes code and architecture.
 aws lambda get-function --function-name "$function_arn" --query '{Image:Code.ImageUri,Architecture:Configuration.Architectures[0]}' > rollback.json
