@@ -15,6 +15,7 @@ from ..preprocess import (gwp_image_references, hk_mo_price, normalize_currency_
                           optional_text, preprocess_vip_and_star_prices, recommended_price, required_text)
 from ..schema import CreateParams, GenerationResult
 from ..types import FabricCanvas
+from ..template_contract import native_template, legacy_background, normalize_bindings
 
 
 class Pipeline(POSMImplementation):
@@ -27,12 +28,13 @@ class Pipeline(POSMImplementation):
     def get_template(self) -> Image.Image:
         bundle = Bundle.configured()
         bundle.verify()
-        with Image.open(bundle.root / "assets" / "templates" / f"{self.name}.png") as image:
+        background = legacy_background(self.name) or bundle.root / "assets" / "templates" / f"{native_template(self.name)}.png"
+        with Image.open(background) as image:
             return image.convert("RGBA")
 
     def get_schema(self) -> dict[str, str]:
         catalog = Path(__file__).resolve().parents[1] / "template_catalog.json"
-        return json.loads(catalog.read_text(encoding="utf-8"))[self.name]["fields"]
+        return json.loads(catalog.read_text(encoding="utf-8"))[native_template(self.name)]["fields"]
 
     def process(self, params: CreateParams) -> GenerationResult:
         with tempfile.TemporaryDirectory(prefix="posm-native-") as directory:
@@ -45,9 +47,7 @@ class Pipeline(POSMImplementation):
                     return reference_ids[reference]
                 image = self.maybe_load_image_from_url(reference)
                 if image is None:
-                    if self.name == "sasa_202607006":
-                        return None
-                    raise RendererError("IMAGE_LOAD_FAILED")
+                    return None
                 with image:
                     bounds = image.getchannel("A").getbbox()
                     cropped = image.crop(bounds) if bounds else image.copy()
@@ -73,7 +73,7 @@ class Pipeline(POSMImplementation):
                 for key in ("brand_name", "product_name"):
                     normalized[key] = required_text(fields, key)
                 for key in ("price_recommended", "fab"):
-                    normalized[key] = required_text(fields, key) if self.name in {"sasa_202607001", "sasa_202607006"} else optional_text(fields, key) or ""
+                    normalized[key] = required_text(fields, key) if native_template(self.name) in {"sasa_202607001", "sasa_202607006"} else optional_text(fields, key) or ""
                 normalized["price_recommended"] = recommended_price(str(normalized["price_recommended"]), region)
                 vip, star = preprocess_vip_and_star_prices(optional_text(fields, "price_vip"), optional_text(fields, "star_price"), region)
                 normalized["price_vip"], normalized["star_price"] = vip, star or ""
@@ -82,11 +82,14 @@ class Pipeline(POSMImplementation):
                                            if (image_id := prepare(ref)) is not None]
                 fields_list.append(normalized)
                 products.append([image_id for ref in images if (image_id := prepare(ref)) is not None])
-            response = Bundle.configured().invoke({
+            request = {
                 "protocol_version": 1, "request_id": self._get_run_id(), "method": "render",
-                "params": {"template": self.name, "promotion_list": fields_list, "product": products},
+                "params": {"template": native_template(self.name), "promotion_list": fields_list, "product": products},
                 "resources": resources, "options": {"output_dir": str(root)}, "extensions": {},
-            })
+            }
+            bundle = Bundle.configured()
+            background = legacy_background(self.name)
+            response = bundle.invoke(request, background_path=background) if background else bundle.invoke(request)
             canvas_path = contained_file(root, response["fabric"])
             preview_path = contained_file(root, response["preview"])
             if canvas_path.stat().st_size > 256 * 1024 * 1024 or preview_path.stat().st_size > 64 * 1024 * 1024:
@@ -94,6 +97,7 @@ class Pipeline(POSMImplementation):
             canvas = FabricCanvas.model_validate_json(canvas_path.read_bytes())
             if canvas.version != "6.6.5":
                 raise RendererError("FABRIC_VERSION_MISMATCH")
+            normalize_bindings(canvas, self.name)
             with Image.open(preview_path) as preview:
                 if preview.size != (canvas.width, canvas.height):
                     raise RendererError("PREVIEW_DIMENSIONS_MISMATCH")

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from .native import DoublePipeline, Pipeline
+from ..template_contract import native_template
 
 
 def get_pipeline(name: str) -> Pipeline:
-    if name not in {"sasa_202607001", "sasa_202607006", "sasa_202609001"}:
-        raise ValueError(f"Unsupported template: {name}")
+    native_template(name)
     return (DoublePipeline if name == "sasa_202609001" else Pipeline)(name)

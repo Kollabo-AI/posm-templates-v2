@@ -19,7 +19,7 @@ class IntegrityTests(unittest.TestCase):
         self.root = Path(self.temp.name).resolve()
         self.binary = self.root / "renderer"
         self.binary.write_bytes(b"fixture executable")
-        manifest = {"schema_version": 1, "protocol_version": 1, "fabric_version": "6.6.5",
+        manifest = {"schema_version": 1, "protocol_version": 1, "fabric_version": "6.6.5", "development": False,
                     "executable": "renderer", "files": {"renderer": hashlib.sha256(self.binary.read_bytes()).hexdigest()}}
         self.manifest = self.root / "manifest.json"
         self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
@@ -65,7 +65,7 @@ class ContractTests(unittest.TestCase):
 
     def test_unported_template_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            CreateParams(template="sasa_202607005", promotion_list=[{}], product=[[]])
+            CreateParams(template="sasa_202607007", promotion_list=[{}], product=[[]])
 
     def test_07006_requires_exactly_one_promotion_and_product_list(self) -> None:
         item = CreateParams(template="sasa_202607006", promotion_list=[{}], product=[[]])

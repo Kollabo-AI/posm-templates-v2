@@ -1,0 +1,77 @@
+name: Verify and deploy templates v2
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: templates-v2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Test the service and release bundles
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m unittest discover -s tests -v
+          python scripts/verify_release.py
+      - name: Build the Lambda runtime from compiled release files
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 --tag posm-templates-v2:verified .
+          docker run --rm --read-only --tmpfs /tmp:rw,size=1g \
+            --volume "$PWD/scripts/verify_release.py:/var/task/scripts/verify_release.py:ro" \
+            --entrypoint python posm-templates-v2:verified /var/task/scripts/verify_release.py
+          docker run --rm --read-only --tmpfs /tmp:rw,size=1g \
+            --entrypoint python posm-templates-v2:verified \
+            -c 'from lambda_handler import handler; assert handler({"Records":[]}, None) == {"batchItemFailures":[]}'
+          docker save posm-templates-v2:verified | gzip > lambda-image.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verified-lambda-image
+          path: lambda-image.tar.gz
+          retention-days: 3
+          compression-level: 0
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      STACK_NAME: posm-singapore-data-audit
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: verified-lambda-image
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::137307166614:role/posm-singapore-data-audit-dev-poster-deploy
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Publish the tested image and update dev
+        run: bash scripts/deploy_dev.sh

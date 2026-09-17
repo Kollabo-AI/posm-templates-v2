@@ -5,6 +5,9 @@ import json
 import os
 import platform
 import subprocess
+import shutil
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -57,20 +60,23 @@ class Bundle:
                 raise RendererError("RENDERER_FILE_CHECKSUM")
         return manifest
 
-    def invoke(self, request: dict[str, Any]) -> dict[str, Any]:
+    def invoke(self, request: dict[str, Any], *, background_path: Path | None = None) -> dict[str, Any]:
         manifest = self.verify()
+        if manifest.get("development") is not False:
+            raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
         executable = contained_file(self.root, manifest["executable"])
         request_bytes = (json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
         if len(request_bytes) > 2 * 1024 * 1024:
             raise RendererError("RENDERER_REQUEST_LIMIT")
         try:
-            process = subprocess.run(
-                [str(executable), "--assets", str(self.root / "assets")],
-                input=request_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=float(os.getenv("POSM_RENDER_TIMEOUT_SECONDS", "120")), check=False,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                cwd=self.root,
-            )
+            with self._assets(background_path) as assets:
+                process = subprocess.run(
+                    [str(executable), "--assets", str(assets)],
+                    input=request_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    timeout=float(os.getenv("POSM_RENDER_TIMEOUT_SECONDS", "120")), check=False,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    cwd=self.root,
+                )
         except subprocess.TimeoutExpired as error:
             raise RendererError("RENDERER_TIMEOUT") from error
         except OSError as error:
@@ -88,6 +94,24 @@ class Bundle:
         if response.get("ok") is not True:
             raise RendererError(response.get("error", {}).get("code", "RENDERER_FAILED"))
         return response["result"]
+
+    @contextmanager
+    def _assets(self, background_path: Path | None):
+        if background_path is None:
+            yield self.root / "assets"
+            return
+        # Legacy 07002-07005 share the existing 07006 layout and differ only in
+        # artwork. Stage an isolated asset tree; never modify a pinned bundle.
+        background_path = background_path.resolve()
+        allowed = Path(__file__).resolve().parent / "legacy_backgrounds"
+        hashes = json.loads((allowed / "checksums.json").read_text(encoding="utf-8"))
+        if background_path.parent != allowed or hashes.get(background_path.name) != file_sha256(background_path):
+            raise RendererError("LEGACY_BACKGROUND_CHECKSUM")
+        with tempfile.TemporaryDirectory(prefix="posm-assets-") as directory:
+            target = Path(directory) / "assets"
+            shutil.copytree(self.root / "assets", target)
+            shutil.copyfile(background_path, target / "templates" / "sasa_202607006.png")
+            yield target
 
 
 def runtime_target() -> str:

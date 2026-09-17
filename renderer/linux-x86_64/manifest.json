@@ -151,8 +151,9 @@
     "assets/licenses/zlib-rs-0.6.7/LICENSE": "e72111c52b7d96ebe25348dee19f0744f444d3c95ae6b1ecb6ccaecc5bce05ba",
     "assets/licenses/zmij-1.0.23/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "assets/templates/sasa_202607001.png": "4129b52cbb0a7a5806ea74fb5f780d66606d53785714f62a80120e402d410251",
+    "assets/templates/sasa_202607006.png": "b7843879bc85506e3029e96f9a7ae0decc464a7bd78b1374d99b74ba9e1ea895",
     "assets/templates/sasa_202609001.png": "b517f3713e0e121f274b2ebe8bd108b76df53ba49934ae6299a186d377261773",
-    "posm-renderer": "bcbaa70d12353c403ab7d536bfcae719864f178723ce4289f80cf10857cb7da5"
+    "posm-renderer": "e06bcf2e739ab1d730d19e5be7f60cbcdf87dd6cb5b6d7df9764cc97bfed97e6"
   },
   "protocol_version": 1,
   "renderer_version": "0.1.1",
