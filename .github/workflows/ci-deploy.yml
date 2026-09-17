@@ -31,14 +31,27 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements.txt
           python -m unittest discover -s tests -v
           python scripts/verify_release.py
+      - uses: docker/setup-buildx-action@v3
       - name: Build the Lambda runtime from compiled release files
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          tags: posm-templates-v2:verified
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=templates-v2-lambda
+          cache-to: type=gha,mode=max,scope=templates-v2-lambda
+      - name: Verify the read-only runtime and package the tested image
         run: |
           set -euo pipefail
-          docker build --platform linux/amd64 --tag posm-templates-v2:verified .
           docker run --rm --read-only --tmpfs /tmp:rw,size=1g \
             --volume "$PWD/scripts/verify_release.py:/var/task/scripts/verify_release.py:ro" \
             --entrypoint python posm-templates-v2:verified /var/task/scripts/verify_release.py
           docker run --rm --read-only --tmpfs /tmp:rw,size=1g \
+            --network none \
+            --env EXPRESS_INTERNAL_URL=http://127.0.0.1:9/api/internal \
+            --env JOB_WORKER_SECRET=ci-placeholder \
             --entrypoint python posm-templates-v2:verified \
             -c 'from lambda_handler import handler; assert handler({"Records":[]}, None) == {"batchItemFailures":[]}'
           docker save posm-templates-v2:verified | gzip > lambda-image.tar.gz
