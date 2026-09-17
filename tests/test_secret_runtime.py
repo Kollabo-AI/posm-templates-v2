@@ -45,7 +45,7 @@ class SecretRuntimeTests(unittest.TestCase):
     def test_executable_scripts_have_linux_shebangs_and_line_endings(self) -> None:
         expected = {
             "asm-exec": b"#!/usr/bin/env python3\n",
-            "lambda_secrets_extension.py": b"#!/usr/bin/python3\n",
+            "lambda_secrets_extension.py": b"#!/var/lang/bin/python3\n",
         }
         for filename, shebang in expected.items():
             with self.subTest(filename=filename):
