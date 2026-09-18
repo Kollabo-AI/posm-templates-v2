@@ -1,10 +1,36 @@
 import datetime as dt
 import unittest
+from unittest.mock import patch
 
-from scripts.deploy_prod import parameters_for_image, should_activate, verify_mapping
+from scripts.deploy_prod import parameters_for_image, should_activate, verify_mapping, wait_for_scan
 
 
 class ProductionReleaseSafety(unittest.TestCase):
+    @patch("scripts.deploy_prod.time.sleep")
+    @patch("scripts.deploy_prod.aws")
+    def test_waits_for_scan_registration_then_requires_completion(self, aws, sleep):
+        aws.side_effect = [RuntimeError("ScanNotFoundException"),
+                           {"imageScanStatus": {"status": "IN_PROGRESS"}},
+                           {"imageScanStatus": {"status": "COMPLETE"}, "imageScanFindings": {"findingSeverityCounts": {"LOW": 2}}}]
+        self.assertEqual(wait_for_scan("repo", "digest"), {"LOW": 2})
+        self.assertEqual(sleep.call_count, 2)
+
+    @patch("scripts.deploy_prod.time.sleep")
+    @patch("scripts.deploy_prod.aws")
+    def test_missing_scan_times_out_and_permission_errors_fail(self, aws, sleep):
+        aws.side_effect = RuntimeError("ScanNotFoundException")
+        with self.assertRaisesRegex(RuntimeError, "timed out"):
+            wait_for_scan("repo", "digest", attempts=2)
+        aws.side_effect = RuntimeError("AccessDeniedException")
+        with self.assertRaisesRegex(RuntimeError, "AccessDeniedException"):
+            wait_for_scan("repo", "digest")
+
+    @patch("scripts.deploy_prod.aws")
+    def test_high_findings_block_release(self, aws):
+        aws.return_value = {"imageScanStatus": {"status": "COMPLETE"}, "imageScanFindings": {"findingSeverityCounts": {"HIGH": 1}}}
+        with self.assertRaisesRegex(RuntimeError, "severity gate"):
+            wait_for_scan("repo", "digest")
+
     def test_staging_requires_alias_and_preserves_every_unrelated_parameter(self):
         parameters = [{"ParameterKey": k, "ParameterValue": v} for k, v in {
             "ProdPosterAliasEnabled": "true", "ProdPosterImageUri": "old", "ProdPosterArchitecture": "arm64",

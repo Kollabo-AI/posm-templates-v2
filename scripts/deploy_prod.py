@@ -65,6 +65,27 @@ def probe(function, qualifier):
     require(json.loads(Path("response.json").read_text()) == {"batchItemFailures": []}, "Unexpected smoke response")
 
 
+def wait_for_scan(repository, digest, attempts=60):
+    for _ in range(attempts):
+        try:
+            scan = aws("ecr", "describe-image-scan-findings", "--repository-name", repository, "--image-id", "imageDigest=" + digest)
+        except RuntimeError as error:
+            # Scan-on-push registration is eventually consistent. Do not suppress
+            # authorization errors or weaken the severity/completion gates.
+            if "ScanNotFoundException" not in str(error):
+                raise
+            time.sleep(10)
+            continue
+        state = scan["imageScanStatus"]["status"]
+        if state == "COMPLETE":
+            severity = scan.get("imageScanFindings", {}).get("findingSeverityCounts", {})
+            require(not severity.get("HIGH", 0) and not severity.get("CRITICAL", 0), "ECR severity gate failed")
+            return severity
+        require(state in {"IN_PROGRESS", "PENDING"}, "ECR scan failed: " + state)
+        time.sleep(10)
+    raise RuntimeError("ECR scan timed out")
+
+
 def main():
     require(os.environ.get("GITHUB_REF") == "refs/heads/prod", "Only prod can stage production")
     require(os.environ.get("AWS_REGION") == REGION, "Wrong AWS region")
@@ -97,17 +118,7 @@ def main():
     digest = image["imageDigest"]
     require(re.fullmatch(r"sha256:[a-f0-9]{64}", digest), "Invalid image digest")
     image_uri = repository + "@" + digest
-    for _ in range(60):
-        scan = aws("ecr", "describe-image-scan-findings", "--repository-name", FUNCTION, "--image-id", "imageDigest=" + digest)
-        state = scan["imageScanStatus"]["status"]
-        if state == "COMPLETE":
-            break
-        require(state in {"IN_PROGRESS", "PENDING"}, "ECR scan failed: " + state)
-        time.sleep(10)
-    else:
-        raise RuntimeError("ECR scan timed out")
-    severity = scan.get("imageScanFindings", {}).get("findingSeverityCounts", {})
-    require(not severity.get("HIGH", 0) and not severity.get("CRITICAL", 0), "ECR severity gate failed")
+    severity = wait_for_scan(FUNCTION, digest)
 
     if parameters["ProdPosterImageUri"] != image_uri or parameters["ProdPosterArchitecture"] != "x86_64":
         aws("cloudformation", "update-stack", "--stack-name", STACK, "--use-previous-template",
