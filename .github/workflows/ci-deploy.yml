@@ -2,9 +2,9 @@ name: Verify and deploy templates v2
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, prod]
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, prod]
   workflow_dispatch:
 
 permissions:
@@ -88,3 +88,36 @@ jobs:
       - uses: aws-actions/amazon-ecr-login@v2
       - name: Publish the tested image and update dev
         run: bash scripts/deploy_dev.sh
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/prod' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: verified-lambda-image
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::137307166614:role/posm-singapore-prod-runtime-prod-poster-deploy
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Stage the tested version and activate only after the scheduled initial cutover
+        run: python scripts/deploy_prod.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: production-release
+          path: |
+            production-release.json
+            previous-live.json
+          retention-days: 90

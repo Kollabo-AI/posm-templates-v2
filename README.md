@@ -48,7 +48,7 @@ requires the Linux bundle. A Windows bundle does not satisfy that build. Contain
 packaging includes the existing runtime secret resolver. Secrets are resolved only
 inside Lambda, using `JOB_WORKER_SECRET_ARN`; no secret values belong in this repo.
 
-## Releases and dev deployment
+## Releases and deployments
 
 Run `python scripts/verify_release.py` to check manifest hashes, production-only
 bundles, all eight template names, callbacks, previews, and legacy artwork.
@@ -57,7 +57,32 @@ Pushes to `main` run CI. Pushes to `dev` additionally publish the verified image
 to the existing Singapore ECR repository and update `posm-templates-lambda-dev`
 through CloudFormation using GitHub OIDC. The deployment checks ECR findings,
 the image digest, x86-64 architecture, the SQS mapping, and a Lambda invocation.
-Production has no deployment trigger in this repository.
+Pushes to `prod` run the same verification/build gates and stage a published
+version of `posm-templates-lambda-prod-sg` through `posm-singapore-prod-runtime`.
+The existing FIFO queue invokes its release-managed `live` alias. Published
+versions retain their code and architecture, allowing the legacy ARM64 worker to
+serve while v2 x86-64 is tested. Production keeps concurrency 5, memory 3008 MiB,
+timeout 120 seconds, and temporary storage 4096 MiB.
+
+The first cutover is scheduled separately for **2026-09-20 00:00 Asia/Hong_Kong**
+(2026-09-19 16:00 UTC). EventBridge Scheduler directly updates `live` to the
+reviewed version, guarded by the alias revision. Scheduling has 60-second
+precision; already running requests can finish on the previous version.
+The backend infrastructure repository owns `template.poster-cutover.yaml`.
+The release pipeline owns versions/aliases, so scheduled activation does not
+create CloudFormation resource drift.
+
+Before 2026-09-19 16:15 UTC, both the release script and AWS IAM block CI alias
+activation. After that window, later `prod` pushes activate their verified version
+only if `live` is already x86-64. A missed/cancelled first cutover or a rollback to
+legacy ARM64 keeps later CI releases staged until an operator explicitly restores
+v2. Each production run retains `production-release` artifacts for 90 days.
+
+Production rollback is `aws lambda update-alias --function-name
+posm-templates-lambda-prod-sg --name live --function-version <previous-version>
+--revision-id <current-live-revision> --region ap-southeast-1`. Disable a still
+pending cutover first. This immediately selects the previous immutable code and
+architecture without rebuilding an image or changing the queue mapping.
 
 Build the private renderer in its own checkout using its release build scripts.
 Install only its stripped runtime bundle using the private `install_bundle.py`;
