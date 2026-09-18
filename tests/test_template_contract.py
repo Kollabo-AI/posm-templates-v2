@@ -6,6 +6,19 @@ from app.types import FabricCanvas
 
 
 class TemplateContractTests(unittest.TestCase):
+    def test_09001_normalizes_each_slots_price_and_bullet_bindings(self):
+        canvas = FabricCanvas(width=100, height=100, objects=[
+            {"type": "textbox", "left": 12, "posmBinding": {
+                "field": f"promotion_list.{slot}.{field}", "role": "formatted-line", "index": 8}}
+            for slot in range(2) for field in ("price_vip", "price_recommended", "fab")
+        ])
+        normalize_bindings(canvas, "sasa_202609001")
+        for node in canvas.objects:
+            self.assertEqual(node["left"], 12)
+            self.assertEqual(node["posmBinding"]["index"], 0)
+            self.assertEqual(node["posmBinding"]["role"],
+                             "formatted-line" if node["posmBinding"]["field"].endswith("fab") else "token")
+
     def test_legacy_names_keep_identity_and_one_slot_contract(self):
         for name in LEGACY_TEMPLATES:
             with self.subTest(template=name):
