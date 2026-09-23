@@ -33,7 +33,9 @@ def normalize_bindings(canvas, template: str) -> None:
             if leaf in {"brand_name", "product_name", "gwp_text", "tnc"}:
                 binding["role"] = "line"
             elif leaf == "fab":
-                binding["role"] = "formatted-line" if native_template(template) == "sasa_202607001" else "line"
+                binding["role"] = "formatted-line" if native_template(template) in {"sasa_202607001", "sasa_202609001"} else "line"
+            elif leaf in {"price_recommended", "price_vip", "star_price"}:
+                binding["role"] = "token"
             elif leaf == "discount_ball":
                 binding["role"] = "token"
             binding["index"] = indexes.get(field, 0)
