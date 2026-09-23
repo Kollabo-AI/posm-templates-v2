@@ -26,6 +26,8 @@ class Pipeline(POSMImplementation):
         return cls.slots
 
     def get_template(self) -> Image.Image:
+        if self.name == "sasa_202609002":
+            return Image.new("RGBA", (1000, 1000), "white")
         bundle = Bundle.configured()
         bundle.verify()
         background = legacy_background(self.name) or bundle.root / "assets" / "templates" / f"{native_template(self.name)}.png"
@@ -47,6 +49,8 @@ class Pipeline(POSMImplementation):
                     return reference_ids[reference]
                 image = self.maybe_load_image_from_url(reference)
                 if image is None:
+                    if self.name == "sasa_202609002":
+                        raise RendererError("IMAGE_LOAD_FAILED")
                     return None
                 with image:
                     bounds = image.getchannel("A").getbbox()
@@ -64,7 +68,7 @@ class Pipeline(POSMImplementation):
             fields_list: list[dict[str, str | list[str]]] = []
             products: list[list[str]] = []
             for fields, images in zip(params.promotion_list, params.product, strict=True):
-                if not fields and self.name == "sasa_202609001":
+                if not fields and self.name in {"sasa_202609001", "sasa_202609002"}:
                     fields_list.append({})
                     products.append([])
                     continue
@@ -87,6 +91,8 @@ class Pipeline(POSMImplementation):
                 "params": {"template": native_template(self.name), "promotion_list": fields_list, "product": products},
                 "resources": resources, "options": {"output_dir": str(root)}, "extensions": {},
             }
+            if self.name == "sasa_202609002":
+                request["params"].update(width=params.width, height=params.height)
             bundle = Bundle.configured()
             background = legacy_background(self.name)
             response = bundle.invoke(request, background_path=background) if background else bundle.invoke(request)
@@ -97,6 +103,8 @@ class Pipeline(POSMImplementation):
             canvas = FabricCanvas.model_validate_json(canvas_path.read_bytes())
             if canvas.version != "6.6.5":
                 raise RendererError("FABRIC_VERSION_MISMATCH")
+            if self.name == "sasa_202609002" and (canvas.width, canvas.height) != (params.width, params.height):
+                raise RendererError("OUTPUT_DIMENSIONS_MISMATCH")
             normalize_bindings(canvas, self.name)
             with Image.open(preview_path) as preview:
                 if preview.size != (canvas.width, canvas.height):

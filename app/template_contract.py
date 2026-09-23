@@ -1,7 +1,7 @@
 """Public template names and transport compatibility, without layout rules."""
 from pathlib import Path
 
-NATIVE_TEMPLATES = ("sasa_202607001", "sasa_202607006", "sasa_202609001")
+NATIVE_TEMPLATES = ("sasa_202607001", "sasa_202607006", "sasa_202609001", "sasa_202609002")
 LEGACY_TEMPLATES = ("sasa_202604002", "sasa_202607002", "sasa_202607003", "sasa_202607004", "sasa_202607005")
 SUPPORTED_TEMPLATES = (*NATIVE_TEMPLATES, *LEGACY_TEMPLATES)
 
