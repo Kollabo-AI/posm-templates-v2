@@ -97,6 +97,8 @@ class GenerationResult(BaseModel):
     successful: bool
     """A boolean flag indicating whether the generation was successful. This is derived from the presence of a valid reference_jpg and fabric_model."""
 
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+
     @model_validator(mode='after')
     def validate_success(self):
         """Ensures that the presence of a reference JPG is consistent with the successful flag."""

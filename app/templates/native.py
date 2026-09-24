@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -89,7 +90,14 @@ class Pipeline(POSMImplementation):
             request = {
                 "protocol_version": 1, "request_id": self._get_run_id(), "method": "render",
                 "params": {"template": native_template(self.name), "promotion_list": fields_list, "product": products},
-                "resources": resources, "options": {"output_dir": str(root)}, "extensions": {},
+                "resources": resources,
+                "options": {
+                    "output_dir": str(root),
+                    "layout_memory_mode": os.getenv("POSM_LAYOUT_MEMORY_MODE", "shadow"),
+                    "layout_strategy": os.getenv("POSM_LAYOUT_STRATEGY"),
+                    "layout_memory_revision": os.getenv("POSM_LAYOUT_MEMORY_REVISION"),
+                },
+                "extensions": {},
             }
             if self.name == "sasa_202609002":
                 request["params"].update(width=params.width, height=params.height)
@@ -111,8 +119,17 @@ class Pipeline(POSMImplementation):
                     raise RendererError("PREVIEW_DIMENSIONS_MISMATCH")
                 buffer = io.BytesIO()
                 preview.convert("RGB").save(buffer, format="JPEG")
-            return GenerationResult(id=self._get_run_id(), fabric_model=canvas, successful=True, message=None,
-                                    reference_jpg="data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii"))
+            return GenerationResult(
+                id=self._get_run_id(),
+                fabric_model=canvas,
+                successful=True,
+                message=None,
+                reference_jpg="data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii"),
+                metadata={
+                    "layout_memory": response.get("memory", {}),
+                    "layout_diagnostics": response.get("diagnostics", {}),
+                },
+            )
 
 
 class DoublePipeline(Pipeline):
