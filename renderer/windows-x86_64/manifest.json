@@ -48,7 +48,7 @@
     "assets/licenses/find-msvc-tools-0.1.12/LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
     "assets/licenses/flate2-1.1.10/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "assets/licenses/flate2-1.1.10/LICENSE-MIT": "025436edff4cfcdde17a5811fdea78892d8482efd1abdec5a17872d07a4f2112",
-    "assets/licenses/generic-array-0.14.7/LICENSE": "ad4fcfaf8d5b12b97409c137a03d4a4e4b21024c65c54f976cc3b609c1bd5b0f",
+    "assets/licenses/generic-array-0.14.7/LICENSE": "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583",
     "assets/licenses/glob-0.3.4/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "assets/licenses/glob-0.3.4/LICENSE-MIT": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
     "assets/licenses/hashbrown-0.17.1/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
@@ -153,10 +153,10 @@
     "assets/templates/sasa_202607001.png": "4129b52cbb0a7a5806ea74fb5f780d66606d53785714f62a80120e402d410251",
     "assets/templates/sasa_202607006.png": "b7843879bc85506e3029e96f9a7ae0decc464a7bd78b1374d99b74ba9e1ea895",
     "assets/templates/sasa_202609001.png": "b517f3713e0e121f274b2ebe8bd108b76df53ba49934ae6299a186d377261773",
-    "posm-renderer.exe": "00d32280b48b1f5c95946686bfc7c42b3e1ad9d6d8d54ff7d79ef3ef8ab2d873"
+    "posm-renderer.exe": "0c289041a1e347c4278d29d01e560deb98b4788fd8e956f732022e519742ff11"
   },
   "protocol_version": 1,
-  "renderer_version": "0.1.1",
+  "renderer_version": "0.1.3",
   "schema_version": 1,
   "target": "x86_64-pc-windows-msvc"
 }
