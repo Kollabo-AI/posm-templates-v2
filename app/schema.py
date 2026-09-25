@@ -3,7 +3,7 @@
 from __future__ import annotations
 import uuid
 import re
-from pydantic import BaseModel, model_validator, RootModel, Field, ConfigDict, JsonValue
+from pydantic import BaseModel, model_validator, RootModel, Field, ConfigDict, JsonValue, StrictInt
 from .types import FabricCanvas
 from .util import load_image_from_url
 from PIL import Image
@@ -17,6 +17,17 @@ class CreateParams(BaseModel):
     template: str
     promotion_list: list[dict[str, str | list[str]]]
     product: list[list[str]]
+    width: StrictInt | None = Field(default=None, gt=0)
+    height: StrictInt | None = Field(default=None, gt=0)
+
+    @model_validator(mode='after')
+    def check_responsive_dimensions(self) -> CreateParams:
+        if self.template == "sasa_202609002":
+            if self.width is None or self.height is None:
+                raise ValueError("sasa_202609002 requires positive integer width and height")
+            if self.promotion_list == [{}] and self.product and self.product[0]:
+                raise ValueError("Empty promotion requires an empty product list")
+        return self
 
     @model_validator(mode='after')
     def check_promotion_field_types(self):
@@ -85,6 +96,8 @@ class GenerationResult(BaseModel):
 
     successful: bool
     """A boolean flag indicating whether the generation was successful. This is derived from the presence of a valid reference_jpg and fabric_model."""
+
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode='after')
     def validate_success(self):

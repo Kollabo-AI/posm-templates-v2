@@ -55,5 +55,29 @@
       "gwp_text": "買即送洗面乳30ml (總值$99)",
       "gwp_image": "https://example.com/gwp_image.png"
     }
+  },
+  "sasa_202609002": {
+    "slots": 1,
+    "experimental": true,
+    "parameters": {
+      "width": "Required positive integer pixels",
+      "height": "Required positive integer pixels"
+    },
+    "fields": {
+      "hk_mo_price": "MO",
+      "brand_name": "Cyber Colors",
+      "product_name": "亮澤保濕卸妝潔面凝膠 150ml",
+      "price_vip": "MOP132/件",
+      "price_non_vip": "",
+      "price_recommended": "MOP198/件",
+      "star_price": "**價",
+      "fab": "溶解彩妝，清除角質\r\n滋潤亮澤肌膚",
+      "discount_ball": "67折#",
+      "tnc": "#以上折扣以VIP價計算",
+      "icon_text": "獨家發售",
+      "sell_price": "",
+      "gwp_text": "買即送洗面乳30ml (總值$99)",
+      "gwp_image": "https://example.com/gwp_image.png"
+    }
   }
 }
