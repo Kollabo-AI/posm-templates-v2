@@ -21,15 +21,6 @@ class CreateParams(BaseModel):
     height: StrictInt | None = Field(default=None, gt=0)
 
     @model_validator(mode='after')
-    def check_responsive_dimensions(self) -> CreateParams:
-        if self.template == "sasa_202609002":
-            if self.width is None or self.height is None:
-                raise ValueError("sasa_202609002 requires positive integer width and height")
-            if self.promotion_list == [{}] and self.product and self.product[0]:
-                raise ValueError("Empty promotion requires an empty product list")
-        return self
-
-    @model_validator(mode='after')
     def check_promotion_field_types(self):
         for promotion in self.promotion_list:
             for field, value in promotion.items():

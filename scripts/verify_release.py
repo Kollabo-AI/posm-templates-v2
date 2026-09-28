@@ -60,8 +60,6 @@ def smoke(output: Path | None = None) -> None:
               "tnc": "Terms apply", "discount_ball": "75折", "gwp_text": "Gift 10ml", "gwp_image": [reference]}
     for template in SUPPORTED_TEMPLATES:
         payload = {"template": template, "promotion_list": [fields], "product": [[reference]]}
-        if template == "sasa_202609002":
-            payload.update({"width": 1016, "height": 1016})
         result = render_payload(payload)
         assert result.successful, (template, result.message)
         callback = successful_callback(result)
