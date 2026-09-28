@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from PIL import Image
-from app.native import Bundle, file_sha256
+from app.renderer.runtime import Bundle, file_sha256
 from app.release_pin import RENDERER_RELEASES
 from app.template_contract import NATIVE_TEMPLATES, SUPPORTED_TEMPLATES, legacy_background
 from render_service import render_payload

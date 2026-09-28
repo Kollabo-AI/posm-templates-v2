@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from app.native import Bundle, RendererError
+from app.renderer.runtime import Bundle, RendererError
 from app.schema import CreateParams
 from app.templates import get_pipeline
 

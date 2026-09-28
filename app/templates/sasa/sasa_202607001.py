@@ -18,14 +18,10 @@ from ...util import image_to_base64
 from ...util.model import score_product_scale
 
 from ...base import POSMImplementation
-from ...native import Bundle
+from ...renderer.runtime import Bundle
 from ...schema import CreateParams, GenerationResult
 from ...util import image_to_base64, load_image_from_url
-from ...util.browser import (
-    ALIBABA_PUHUITI_FONT_FACES,
-    fabric_to_png,
-    register_browser_font_faces,
-)
+from ...renderer.raster import rasterize_fabric
 
 from ...renderer import *
 from ...renderer.place import MaskPlacementError
@@ -2258,7 +2254,6 @@ def get_layout(
     canvas_bounds: BoundingBox | None = None,
     binding_template: str | None = None,
 ) -> FabricCanvas:
-    register_browser_font_faces(ALIBABA_PUHUITI_FONT_FACES)
     output_canvas = canvas_bounds or get_template_canvas()
     prepared_product = PreparedProduct(product_images)
     prepared_gwp_product = (
@@ -2411,7 +2406,7 @@ class Pipeline(POSMImplementation):
             ),
             binding_template=binding_template,
         )
-        reference_image = fabric_to_png(fabric_model).convert("RGB")
+        reference_image = rasterize_fabric(fabric_model).convert("RGB")
 
         return GenerationResult(
             id=self._get_run_id(),

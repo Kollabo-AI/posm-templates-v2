@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .release_pin import RENDERER_MANIFEST_SHA256, RENDERER_RELEASES
+from ..release_pin import RENDERER_MANIFEST_SHA256, RENDERER_RELEASES
 
 
 class RendererError(RuntimeError):
@@ -39,7 +39,7 @@ class Bundle:
     @classmethod
     def configured(cls) -> Bundle:
         target = runtime_target()
-        root = Path(os.getenv("POSM_RENDERER_BUNDLE", str(Path(__file__).resolve().parents[1] / "renderer" / target))).resolve()
+        root = Path(os.getenv("POSM_RENDERER_BUNDLE", str(Path(__file__).resolve().parents[2] / "renderer" / target))).resolve()
         digest = os.getenv("POSM_RENDERER_MANIFEST_SHA256", "") or RENDERER_RELEASES.get(target) or RENDERER_MANIFEST_SHA256
         if not digest:
             raise RendererError("RENDERER_RELEASE_NOT_CONFIGURED")
@@ -110,7 +110,7 @@ class Bundle:
         # Legacy 07002-07005 share the existing 07006 layout and differ only in
         # artwork. Stage an isolated asset tree; never modify a pinned bundle.
         background_path = background_path.resolve()
-        allowed = Path(__file__).resolve().parent / "legacy_backgrounds"
+        allowed = Path(__file__).resolve().parents[1] / "legacy_backgrounds"
         hashes = json.loads((allowed / "checksums.json").read_text(encoding="utf-8"))
         if background_path.parent != allowed or hashes.get(background_path.name) != file_sha256(background_path):
             raise RendererError("LEGACY_BACKGROUND_CHECKSUM")

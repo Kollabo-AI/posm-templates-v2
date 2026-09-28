@@ -5,7 +5,7 @@ from ..util import image_to_base64
 from .box import BoundingBox
 from .primitives import *
 from .. import logger
-from ..util.browser import fabric_to_png
+from .raster import rasterize_fabric
 
 from copy import deepcopy
 
@@ -200,7 +200,7 @@ def _fit_models_on_circle(
     objects = deepcopy(elements)
     cw, ch = _render_size_for_objects([*objects, discount_ball_object])
     fabric = FabricCanvas(objects=objects, width=cw, height=ch)
-    text_img = fabric_to_png(fabric)
+    text_img = rasterize_fabric(fabric)
 
     # Calculate visual center of the rendered stuff
     crop_box = text_img.getbbox(alpha_only=True)
@@ -290,7 +290,7 @@ def _render_local_mask(element: LayoutElement, source_box: BoundingBox) -> Image
     if source_box.w <= 0 or source_box.h <= 0:
         raise ValueError(f"Cannot place element with empty placement box: {source_box}")
 
-    from ..util.browser import fabric_to_png
+    from .raster import rasterize_fabric
 
     local_element = Affine(
         element=element,
@@ -304,7 +304,7 @@ def _render_local_mask(element: LayoutElement, source_box: BoundingBox) -> Image
         width=max(1, math.ceil(source_box.r - source_box.l)),
         height=max(1, math.ceil(source_box.b - source_box.t)),
     )
-    return fabric_to_png(canvas).convert("RGBA")
+    return rasterize_fabric(canvas).convert("RGBA")
 
 
 def _boxes_overlap(left: BoundingBox, right: BoundingBox) -> bool:

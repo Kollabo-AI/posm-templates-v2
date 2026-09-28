@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 import uuid
@@ -9,26 +8,10 @@ from typing import Any
 
 from PIL import Image
 
-from ...native import Bundle, RendererError, contained_file
+from .runtime import Bundle, RendererError, contained_file
 
 
-_ROOT = Path(__file__).resolve().parents[3]
-_FONT_ROOT = Path(
-    os.getenv("POSM_RENDERER_ASSETS", str(Bundle.configured().root / "assets"))
-).resolve() / "fonts"
-ALIBABA_PUHUITI_FONT_FACES = {
-    "Alibaba PuHuiTi": {
-        "normal": {
-            "400": str(_FONT_ROOT / "AlibabaPuHuiTiR.otf"),
-            "500": str(_FONT_ROOT / "AlibabaPuHuiTiM.otf"),
-            "700": str(_FONT_ROOT / "AlibabaPuHuiTiB.otf"),
-        }
-    }
-}
-
-
-def register_browser_font_faces(_faces: dict[str, Any] | None = None) -> None:
-    """Retained layout API; font registration is owned by the native renderer."""
+_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _as_json(value: Any) -> Any:
@@ -41,12 +24,12 @@ def _as_json(value: Any) -> Any:
     return value
 
 
-def fabric_to_png(canvas: Any) -> Image.Image:
+def rasterize_fabric(canvas: Any) -> Image.Image:
     """Rasterize a Fabric primitive canvas through the bundled Skia renderer."""
 
     payload = _as_json(canvas)
     request_id = "layout-" + next(tempfile._get_candidate_names())
-    scratch_root = _ROOT / ".native-layout"
+    scratch_root = _ROOT / ".renderer-layout"
     scratch_root.mkdir(exist_ok=True)
     directory = scratch_root / f"run-{uuid.uuid4().hex}"
     directory.mkdir()
@@ -72,4 +55,4 @@ def fabric_to_png(canvas: Any) -> Image.Image:
         shutil.rmtree(directory, ignore_errors=True)
 
 
-__all__ = ["ALIBABA_PUHUITI_FONT_FACES", "fabric_to_png", "register_browser_font_faces"]
+__all__ = ["rasterize_fabric"]

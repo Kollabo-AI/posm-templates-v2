@@ -9,7 +9,7 @@ from typing import Literal
 from PIL import Image
 
 from ...base import POSMImplementation
-from ...native import Bundle
+from ...renderer.runtime import Bundle
 from ...schema import CreateParams, GenerationResult
 from ...renderer import (
     Affine, BoundingBox, Boxed, Circle, CircleStyle, DiagonalLine, Empty,
@@ -27,9 +27,7 @@ from .shared.price import PriceLineTextStyle, PriceSpanStyle, is_price_line, ren
 from .shared.product import PreparedProduct
 from ...types import FabricCanvas, FabricImage
 from ...util import image_to_base64
-from ...util.browser import (
-    ALIBABA_PUHUITI_FONT_FACES, fabric_to_png, register_browser_font_faces,
-)
+from ...renderer.raster import rasterize_fabric
 
 
 TEMPLATE = "sasa_202609001"
@@ -488,7 +486,6 @@ class Pipeline(POSMImplementation):
     def process(self, params: CreateParams) -> GenerationResult:
         if len(params.promotion_list) != 2 or len(params.product) != 2:
             raise ValueError("Highlight double requires two promotions and two product lists")
-        register_browser_font_faces(ALIBABA_PUHUITI_FONT_FACES)
         panels: list[LayoutElement] = []
         for index, (fields, references, destination) in enumerate(zip(
             params.promotion_list, params.product, (LEFT_PANEL, RIGHT_PANEL), strict=True,
@@ -507,7 +504,7 @@ class Pipeline(POSMImplementation):
                 width=background.width, height=background.height, strokeWidth=0,
             ),
         )
-        preview = fabric_to_png(canvas).convert("RGB")
+        preview = rasterize_fabric(canvas).convert("RGB")
         return GenerationResult(
             id=self._get_run_id(), reference_jpg=image_to_base64(preview, format="JPEG"),
             fabric_model=canvas, message=None, successful=True,

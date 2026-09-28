@@ -1,6 +1,6 @@
 # POSM Templates v2
 
-Python POSM service using a compiled native renderer. Native templates:
+Python POSM service using a compiled Rust/Skia renderer. Supported templates:
 `sasa_202607001`, `sasa_202607006`, and `sasa_202609001`. The responsive
 `sasa_202609002` template is deprecated and rejected by this public contract.
 Legacy names
@@ -33,7 +33,7 @@ python templates_api.py
 The local HTTP adapter serves `/health`, `/create`, `/api/create` on port 8123.
 `render_service.render_payload` accepts exactly one render item. The unchanged
 Lambda handler and worker retain the existing claim/callback and retry contract.
-The native `POSMImplementation` adapter sends the Python-produced Fabric
+The renderer adapter sends the Python-produced Fabric
 primitive canvas to the Skia renderer; it replaces the browser lifecycle.
 
 Images remain HTTP(S), data URLs, or local paths at the Python boundary. The
@@ -103,5 +103,5 @@ recorded in each successful deployment's Actions summary. Legacy images use arm6
 v2 images use x86_64. Preserve every other stack parameter.
 
 Fabric JSON targets 6.6.5 and retains editable text and semantic field bindings.
-The current port is experimental: native/browser raster differences and remaining
+The current port is experimental: raster differences and remaining
 template calibration are documented in the private renderer's validation report.

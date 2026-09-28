@@ -12,8 +12,6 @@ from ....renderer.textbox.spacing import tight_vertical_shift
 from ....renderer.textbox.bounds import TextRasterMask
 from ....renderer.text import split_text
 from .... import logger
-from ....util.browser import fabric_to_png
-
 from copy import deepcopy
 
 import numpy as np

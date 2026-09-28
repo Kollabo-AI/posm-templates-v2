@@ -7,8 +7,7 @@ from functools import lru_cache
 from PIL import Image, ImageColor
 
 from ...types import FabricCanvas, FabricTextbox
-from ...util.browser import fabric_to_png
-from ...util.browser.engine import get_browser_font_context_key
+from ..raster import rasterize_fabric
 from ..box import BoundingBox
 
 
@@ -77,7 +76,6 @@ class _TextRasterCacheKey:
     min_width: float
     has_fill: bool
     has_stroke: bool
-    browser_font_context: tuple[tuple[str, str, int, str], ...]
 
 
 def _text_raster_cache_key(
@@ -176,7 +174,6 @@ def _text_raster_cache_key(
         min_width=text_obj.width if is_single_line else text_obj.minWidth,
         has_fill=has_fill,
         has_stroke=has_stroke,
-        browser_font_context=get_browser_font_context_key(),
     )
 
 
@@ -285,7 +282,7 @@ def _render_mask_uncached(text_obj: FabricTextbox) -> TextRasterMask:
     width = max(1, math.ceil(text_width + padding * 2))
     height = max(1, math.ceil(text_height + padding * 2))
     canvas = FabricCanvas(objects=[local_text_obj], width=width, height=height)
-    image = fabric_to_png(canvas)
+    image = rasterize_fabric(canvas)
     alpha = _alpha_channel(image)
     bbox = alpha.getbbox()
     if bbox is None:

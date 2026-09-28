@@ -1,7 +1,7 @@
 from __future__ import annotations
 from PIL import Image
 from .... import logger
-from ....native import Bundle
+from ....renderer.runtime import Bundle
 
 
 def resolve_icon(icon_text: str | None) -> Image.Image | None:

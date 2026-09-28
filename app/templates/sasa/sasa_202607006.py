@@ -13,15 +13,11 @@ from functools import lru_cache as cache
 from PIL import Image
 
 from ...base import POSMImplementation
-from ...native import Bundle
+from ...renderer.runtime import Bundle
 from ...schema import CreateParams, GenerationResult
 from ...template_contract import legacy_background
 from ...util import image_to_base64, load_image_from_url
-from ...util.browser import (
-    ALIBABA_PUHUITI_FONT_FACES,
-    fabric_to_png,
-    register_browser_font_faces,
-)
+from ...renderer.raster import rasterize_fabric
 
 from ... import logger
 from ...types import FabricCanvas, FabricImage, FabricObjects, PosmBinding
@@ -1091,7 +1087,6 @@ def get_layout(
     emit_fab_bindings: bool = False,
     binding_template: str | None = None,
 ) -> FabricCanvas:
-    register_browser_font_faces(ALIBABA_PUHUITI_FONT_FACES)
     output_canvas = canvas_bounds or get_template_canvas()
     prepared_product = PreparedProduct(product_images)
     prepared_gwp_product = (
@@ -1194,7 +1189,7 @@ class Pipeline(POSMImplementation):
             emit_fab_bindings=binding_template is not None,
             binding_template=binding_template,
         )
-        reference_image = fabric_to_png(fabric_model).convert("RGB")
+        reference_image = rasterize_fabric(fabric_model).convert("RGB")
 
         return GenerationResult(
             id=self._get_run_id(),
