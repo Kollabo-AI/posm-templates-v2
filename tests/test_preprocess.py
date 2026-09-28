@@ -1,5 +1,11 @@
 import unittest
-from app.preprocess import hk_mo_price, normalize_currency_markers, normalize_price, preprocess_vip_and_star_prices, recommended_price
+from app.templates.sasa.shared.preprocess import (
+    hk_mo_price,
+    normalize_currency_markers,
+    normalize_price,
+    preprocess_vip_and_star_prices,
+    recommended_price,
+)
 
 class SasaPricePreprocessingTests(unittest.TestCase):
 

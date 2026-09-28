@@ -1,15 +1,18 @@
 # POSM Templates v2
 
-Python POSM service using a compiled native renderer. Native templates:
-`sasa_202607001`, `sasa_202607006`, and `sasa_202609001`. Legacy names
+Python POSM service using a compiled Rust/Skia renderer. Supported templates:
+`sasa_202607001`, `sasa_202607006`, and `sasa_202609001`. The responsive
+`sasa_202609002` template is deprecated and rejected by this public contract.
+Legacy names
 `sasa_202604002` and `sasa_202607002` through `sasa_202607005` reuse the square
 layout, preserving their artwork and semantic template identity. The service preserves `template`,
 `promotion_list: list[dict]`, `product: list[list[str]]`, and the existing result
 fields: `id`, `reference_jpg`, `fabric_model`, `message`, `successful`.
 
-Layout source and editable configuration belong to a separate private repository.
-This repository ships Python normalization, image loading, transport adapters,
-and compiled renderer bundles. No browser is needed at runtime.
+Layout and Sasa sugarcoating source live in this repository under
+`app/templates/sasa` and `app/renderer`. The compiled renderer bundle owns only
+primitive rasterization and Fabric preview output. No browser is needed at
+runtime.
 
 ## Run
 
@@ -17,9 +20,10 @@ Use Python 3.12 and install `requirements.txt`. A platform-matched verified bund
 must be installed under `renderer/windows-x86_64` or `renderer/linux-x86_64` and
 its manifest hash pinned in `app/release_pin.py`.
 
-Windows and Amazon Linux 2023 x86-64 bundles are included. Windows also needs
-the Microsoft Visual C++ 2015–2022 x64 runtime. The Linux executable is built
-and checked in the pinned Lambda base image.
+The Windows bundle in this checkout includes the primitive protocol and needs
+the Microsoft Visual C++ 2015–2022 x64 runtime. Rebuild the Linux executable
+in the pinned Lambda base image before promoting this boundary; the checked-in
+Linux bundle is the previous release until that build completes.
 
 ```
 python -m unittest discover -s tests
@@ -29,7 +33,8 @@ python templates_api.py
 The local HTTP adapter serves `/health`, `/create`, `/api/create` on port 8123.
 `render_service.render_payload` accepts exactly one render item. The unchanged
 Lambda handler and worker retain the existing claim/callback and retry contract.
-The native `POSMImplementation` adapter replaces the browser lifecycle.
+The renderer adapter sends the Python-produced Fabric
+primitive canvas to the Skia renderer; it replaces the browser lifecycle.
 
 Images remain HTTP(S), data URLs, or local paths at the Python boundary. The
 adapter normalizes and bounds them before calling the executable. A single 09001
@@ -98,5 +103,5 @@ recorded in each successful deployment's Actions summary. Legacy images use arm6
 v2 images use x86_64. Preserve every other stack parameter.
 
 Fabric JSON targets 6.6.5 and retains editable text and semantic field bindings.
-The current port is experimental: native/browser raster differences and remaining
+The current port is experimental: raster differences and remaining
 template calibration are documented in the private renderer's validation report.

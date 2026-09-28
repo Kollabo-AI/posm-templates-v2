@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from PIL import Image
-from app.native import Bundle, file_sha256
+from app.renderer.runtime import Bundle, file_sha256
 from app.release_pin import RENDERER_RELEASES
 from app.template_contract import NATIVE_TEMPLATES, SUPPORTED_TEMPLATES, legacy_background
 from render_service import render_payload
@@ -50,7 +50,11 @@ def verify_files() -> None:
 def smoke(output: Path | None = None) -> None:
     described = Bundle.configured().invoke({"protocol_version": 1, "request_id": "release-gate", "method": "describe"})
     assert described["devtools"] is False
-    assert {entry["id"] for entry in described["templates"]} == set(NATIVE_TEMPLATES)
+    assert "primitive_raster" in described["features"]
+    described_ids = {entry["id"] for entry in described["templates"]}
+    # A pinned renderer may retain a deprecated template for compatibility; the
+    # public v2 contract only requires every active template to be available.
+    assert set(NATIVE_TEMPLATES).issubset(described_ids)
     image = Image.new("RGBA", (96, 160), (30, 100, 180, 255))
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
@@ -60,8 +64,6 @@ def smoke(output: Path | None = None) -> None:
               "tnc": "Terms apply", "discount_ball": "75折", "gwp_text": "Gift 10ml", "gwp_image": [reference]}
     for template in SUPPORTED_TEMPLATES:
         payload = {"template": template, "promotion_list": [fields], "product": [[reference]]}
-        if template == "sasa_202609002":
-            payload.update({"width": 1016, "height": 1016})
         result = render_payload(payload)
         assert result.successful, (template, result.message)
         callback = successful_callback(result)
@@ -72,7 +74,7 @@ def smoke(output: Path | None = None) -> None:
         assert canvas["version"] == "6.6.5" and canvas["objects"]
         bindings = []
         def visit(node):
-            if "posmBinding" in node:
+            if node.get("posmBinding") is not None:
                 bindings.append(node["posmBinding"])
             for child in node.get("objects", []): visit(child)
         for node in canvas["objects"]: visit(node)

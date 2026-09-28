@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.native import Bundle, RendererError
+from app.renderer.runtime import Bundle, RendererError
 from app.schema import CreateParams
 from render_service import render_payload
 
@@ -27,7 +27,7 @@ class IntegrityTests(unittest.TestCase):
 
     def test_binary_tampering_is_rejected_before_execution(self) -> None:
         self.binary.write_bytes(b"modified executable")
-        with patch("app.native.subprocess.run") as execute:
+        with patch("app.renderer.runtime.subprocess.run") as execute:
             with self.assertRaisesRegex(RendererError, "RENDERER_FILE_CHECKSUM"):
                 self.bundle.invoke({"request_id": "test"})
             execute.assert_not_called()
@@ -38,7 +38,7 @@ class IntegrityTests(unittest.TestCase):
             self.bundle.verify()
 
     def test_resource_cannot_escape_bundle(self) -> None:
-        from app.native import contained_file
+        from app.renderer.runtime import contained_file
         with self.assertRaisesRegex(RendererError, "RENDERER_FILE_INVALID"):
             contained_file(self.root, "../outside")
 

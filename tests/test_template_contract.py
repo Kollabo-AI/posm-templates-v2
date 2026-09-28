@@ -1,6 +1,12 @@
 import unittest
 from app.schema import CreateParams
-from app.template_contract import LEGACY_TEMPLATES, native_template, normalize_bindings
+from app.template_contract import (
+    LEGACY_BACKGROUND_TEMPLATES,
+    LEGACY_TEMPLATES,
+    legacy_background,
+    native_template,
+    normalize_bindings,
+)
 from app.templates import get_pipeline
 from app.types import FabricCanvas
 
@@ -27,6 +33,16 @@ class TemplateContractTests(unittest.TestCase):
                 self.assertEqual(get_pipeline(name).name, name)
                 self.assertEqual(native_template(name), "sasa_202607006")
                 self.assertIn("brand_name", get_pipeline(name).get_schema())
+
+    def test_07002_to_07005_use_their_own_07006_backgrounds(self):
+        for name in LEGACY_BACKGROUND_TEMPLATES:
+            with self.subTest(template=name):
+                background = legacy_background(name)
+                self.assertIsNotNone(background)
+                self.assertTrue(background.is_file())
+                self.assertEqual(get_pipeline(name).template_path, str(background))
+
+        self.assertIsNone(legacy_background("sasa_202604002"))
 
     def test_bindings_match_existing_platform_roles_and_keep_geometry(self):
         objects = [

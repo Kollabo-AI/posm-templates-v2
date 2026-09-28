@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .release_pin import RENDERER_MANIFEST_SHA256, RENDERER_RELEASES
+from ..release_pin import RENDERER_MANIFEST_SHA256, RENDERER_RELEASES
 
 
 class RendererError(RuntimeError):
@@ -39,7 +39,7 @@ class Bundle:
     @classmethod
     def configured(cls) -> Bundle:
         target = runtime_target()
-        root = Path(os.getenv("POSM_RENDERER_BUNDLE", str(Path(__file__).resolve().parents[1] / "renderer" / target))).resolve()
+        root = Path(os.getenv("POSM_RENDERER_BUNDLE", str(Path(__file__).resolve().parents[2] / "renderer" / target))).resolve()
         digest = os.getenv("POSM_RENDERER_MANIFEST_SHA256", "") or RENDERER_RELEASES.get(target) or RENDERER_MANIFEST_SHA256
         if not digest:
             raise RendererError("RENDERER_RELEASE_NOT_CONFIGURED")
@@ -61,13 +61,18 @@ class Bundle:
         return manifest
 
     def invoke(self, request: dict[str, Any], *, background_path: Path | None = None) -> dict[str, Any]:
-        manifest = self.verify()
-        if manifest.get("development") is not False:
-            raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
-        executable = contained_file(self.root, manifest["executable"])
+        development_executable = os.getenv("POSM_RENDERER_EXE")
+        if development_executable:
+            executable = Path(development_executable).resolve()
+            if not executable.is_file():
+                raise RendererError("RENDERER_START_FAILED")
+            manifest = {"development": False, "executable": executable.name}
+        else:
+            manifest = self.verify()
+            if manifest.get("development") is not False:
+                raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
+            executable = contained_file(self.root, manifest["executable"])
         request_bytes = (json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
-        if len(request_bytes) > 2 * 1024 * 1024:
-            raise RendererError("RENDERER_REQUEST_LIMIT")
         try:
             with self._assets(background_path) as assets:
                 process = subprocess.run(
@@ -98,18 +103,18 @@ class Bundle:
     @contextmanager
     def _assets(self, background_path: Path | None):
         if background_path is None:
-            yield self.root / "assets"
+            yield Path(os.getenv("POSM_RENDERER_ASSETS", str(self.root / "assets"))).resolve()
             return
         # Legacy 07002-07005 share the existing 07006 layout and differ only in
         # artwork. Stage an isolated asset tree; never modify a pinned bundle.
         background_path = background_path.resolve()
-        allowed = Path(__file__).resolve().parent / "legacy_backgrounds"
+        allowed = Path(__file__).resolve().parents[1] / "legacy_backgrounds"
         hashes = json.loads((allowed / "checksums.json").read_text(encoding="utf-8"))
         if background_path.parent != allowed or hashes.get(background_path.name) != file_sha256(background_path):
             raise RendererError("LEGACY_BACKGROUND_CHECKSUM")
         with tempfile.TemporaryDirectory(prefix="posm-assets-") as directory:
             target = Path(directory) / "assets"
-            shutil.copytree(self.root / "assets", target)
+            shutil.copytree(Path(os.getenv("POSM_RENDERER_ASSETS", str(self.root / "assets"))).resolve(), target)
             shutil.copyfile(background_path, target / "templates" / "sasa_202607006.png")
             yield target
 

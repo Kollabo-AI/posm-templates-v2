@@ -2,8 +2,8 @@ import re
 from collections.abc import Mapping
 from typing import Literal, TypeAlias
 
-from . import logger
-from .price_tokens import is_price_line
+from .... import logger
+from .price import is_price_line
 
 NUMBER_PATTERN = re.compile(r"\d[\d,]*(?:\.\d+)?")
 CURRENCY_PATTERN = re.compile(r"MOP|\$", re.IGNORECASE)

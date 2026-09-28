@@ -4,6 +4,7 @@
 /*.egg-info/
 /output/
 /logs/
+/.renderer-layout/
 __pycache__/
 .pytest_cache/
 .env

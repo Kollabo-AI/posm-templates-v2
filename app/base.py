@@ -76,7 +76,7 @@ class POSMImplementation(abc.ABC):
                 logger.warning("Unexpected promotion fields: %s", sorted(unexpected))
             return self.process(params)
         except Exception as error:
-            logger.exception("Native template generation failed")
+            logger.exception("Template generation failed")
             return GenerationResult(id=run_id, reference_jpg="", fabric_model=None,
                                     message=f"Pipeline processing failed due to error: {error}", successful=False)
         finally:
