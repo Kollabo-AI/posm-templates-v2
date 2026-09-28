@@ -3,6 +3,7 @@ from pathlib import Path
 
 NATIVE_TEMPLATES = ("sasa_202607001", "sasa_202607006", "sasa_202609001")
 LEGACY_TEMPLATES = ("sasa_202604002", "sasa_202607002", "sasa_202607003", "sasa_202607004", "sasa_202607005")
+LEGACY_BACKGROUND_TEMPLATES = ("sasa_202607002", "sasa_202607003", "sasa_202607004", "sasa_202607005")
 SUPPORTED_TEMPLATES = (*NATIVE_TEMPLATES, *LEGACY_TEMPLATES)
 
 
@@ -13,9 +14,9 @@ def native_template(name: str) -> str:
 
 
 def legacy_background(name: str) -> Path | None:
-    if name in LEGACY_TEMPLATES and name != "sasa_202604002":
-        return Path(__file__).resolve().parent / "legacy_backgrounds" / f"{name}.png"
-    return None
+    if name not in LEGACY_BACKGROUND_TEMPLATES:
+        return None
+    return Path(__file__).resolve().parent / "legacy_backgrounds" / f"{name}.png"
 
 
 def normalize_bindings(canvas, template: str) -> None:
