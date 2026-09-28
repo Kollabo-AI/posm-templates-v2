@@ -23,24 +23,44 @@ def normalize_bindings(canvas, template: str) -> None:
     indexes: dict[str, int] = {}
 
     def visit(node):
-        if not isinstance(node, dict):
+        is_model = hasattr(node, "model_copy") and hasattr(node, "posmBinding")
+        if is_model:
+            binding = node.posmBinding
+            children = getattr(node, "objects", [])
+        elif isinstance(node, dict):
+            binding = node.get("posmBinding")
+            children = node.get("objects", [])
+        else:
             return
-        binding = node.get("posmBinding")
-        if isinstance(binding, dict):
-            field = str(binding.get("field", ""))
+        if binding is not None:
+            if hasattr(binding, "model_dump"):
+                values = binding.model_dump(mode="python")
+            elif isinstance(binding, dict):
+                # Work on a copy: ``binding.clear()`` below mutates the
+                # original dictionary, so aliasing it would discard all
+                # values before they can be written back.
+                values = dict(binding)
+            else:
+                values = {}
+            field = str(values.get("field", ""))
             leaf = field.rsplit(".", 1)[-1]
-            binding["template"] = template
+            values["template"] = template
             if leaf in {"brand_name", "product_name", "gwp_text", "tnc"}:
-                binding["role"] = "line"
+                values["role"] = "line"
             elif leaf == "fab":
-                binding["role"] = "formatted-line" if native_template(template) in {"sasa_202607001", "sasa_202609001"} else "line"
+                values["role"] = "formatted-line" if native_template(template) in {"sasa_202607001", "sasa_202609001"} else "line"
             elif leaf in {"price_recommended", "price_vip", "star_price"}:
-                binding["role"] = "token"
+                values["role"] = "token"
             elif leaf == "discount_ball":
-                binding["role"] = "token"
-            binding["index"] = indexes.get(field, 0)
-            indexes[field] = binding["index"] + 1
-        for child in node.get("objects", []):
+                values["role"] = "token"
+            values["index"] = indexes.get(field, 0)
+            indexes[field] = values["index"] + 1
+            if is_model:
+                node.posmBinding = type(binding).model_validate(values)
+            else:
+                binding.clear()
+                binding.update(values)
+        for child in children:
             visit(child)
 
     for node in canvas.objects:
