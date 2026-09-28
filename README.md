@@ -1,7 +1,9 @@
 # POSM Templates v2
 
 Python POSM service using a compiled native renderer. Native templates:
-`sasa_202607001`, `sasa_202607006`, and `sasa_202609001`. Legacy names
+`sasa_202607001`, `sasa_202607006`, and `sasa_202609001`. The responsive
+`sasa_202609002` template is deprecated and rejected by this public contract.
+Legacy names
 `sasa_202604002` and `sasa_202607002` through `sasa_202607005` reuse the square
 layout, preserving their artwork and semantic template identity. The service preserves `template`,
 `promotion_list: list[dict]`, `product: list[list[str]]`, and the existing result
