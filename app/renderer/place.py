@@ -145,10 +145,10 @@ def predict_mask_placement(
             best_y=best_y,
             occupied_mask=occupied_mask,
         )
-        logger.write_image(
-            debug_placement,
-            "Debug visualization of mask placement with occupied areas (purple), occupied boxes (red), and canvas box (green)",
-            "debug_mask_placement.png",
+        logger.debug(
+            "Generated mask placement debug visualization (%sx%s)",
+            debug_placement.width,
+            debug_placement.height,
         )
 
     logger.debug("Finished mask placement prediction.")

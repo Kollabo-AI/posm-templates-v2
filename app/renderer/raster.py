@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shutil
-import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -28,7 +27,7 @@ def rasterize_fabric(canvas: Any) -> Image.Image:
     """Rasterize a Fabric primitive canvas through the bundled Skia renderer."""
 
     payload = _as_json(canvas)
-    request_id = "layout-" + next(tempfile._get_candidate_names())
+    request_id = f"layout-{uuid.uuid4().hex}"
     scratch_root = _ROOT / ".renderer-layout"
     scratch_root.mkdir(exist_ok=True)
     directory = scratch_root / f"run-{uuid.uuid4().hex}"

@@ -141,10 +141,10 @@ def preprocess_product_ids(
             )
         combine_image_coords = temp_product_shot.positions
         combine_images = temp_product_shot.images
-        logger.write_image(
-            temp_product_shot.get_image(),
-            "Combined reconstructed product shot from heuristic layout generation",
-            "combined.png"
+        logger.debug(
+            "Combined reconstructed product shot from heuristic layout generation (%sx%s)",
+            temp_product_shot.width,
+            temp_product_shot.height,
         )
 
     imgs: list[EditableImage] = []
