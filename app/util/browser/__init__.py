@@ -13,7 +13,9 @@ from ...native import Bundle, RendererError, contained_file
 
 
 _ROOT = Path(__file__).resolve().parents[3]
-_FONT_ROOT = _ROOT / "renderer" / "windows-x86_64" / "assets" / "fonts"
+_FONT_ROOT = Path(
+    os.getenv("POSM_RENDERER_ASSETS", str(Bundle.configured().root / "assets"))
+).resolve() / "fonts"
 ALIBABA_PUHUITI_FONT_FACES = {
     "Alibaba PuHuiTi": {
         "normal": {
