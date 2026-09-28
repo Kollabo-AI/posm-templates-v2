@@ -73,8 +73,6 @@ class Bundle:
                 raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
             executable = contained_file(self.root, manifest["executable"])
         request_bytes = (json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
-        if len(request_bytes) > 2 * 1024 * 1024:
-            raise RendererError("RENDERER_REQUEST_LIMIT")
         try:
             with self._assets(background_path) as assets:
                 process = subprocess.run(

@@ -62,8 +62,8 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(self._text(request, "Gift description"), "Gift MOP99")
         image_nodes = [node for node in self._objects(request) if node.get("type") == "image"]
         self.assertTrue(image_nodes)
-        self.assertTrue(all(node["src"].startswith("data:image/") for node in image_nodes))
-        self.assertEqual(request["resources"], {})
+        self.assertTrue(all(node["src"].startswith("image:") for node in image_nodes))
+        self.assertTrue(request["resources"])
         self.assertFalse(Path(request["options"]["output_dir"]).exists())
 
     def test_native_failure_keeps_generation_result_failure_contract(self) -> None:
