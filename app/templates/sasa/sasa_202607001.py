@@ -6,6 +6,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from PIL import Image
@@ -17,6 +18,7 @@ from ...util import image_to_base64
 from ...util.model import score_product_scale
 
 from ...base import POSMImplementation
+from ...native import Bundle
 from ...schema import CreateParams, GenerationResult
 from ...util import image_to_base64, load_image_from_url
 from ...util.browser import (
@@ -2346,7 +2348,7 @@ def get_layout(
 
 @lru_cache(maxsize=1)
 def get_template_path():
-    path = "resources/templates/sasa_202607001.png"
+    path = str(Bundle.configured().root / "assets" / "templates" / "sasa_202607001.png")
     if not os.path.exists(path):
         raise FileNotFoundError(f"Template image not found at {path}")
     return path

@@ -7,12 +7,15 @@ import os
 import re
 import math
 import unicodedata
+from pathlib import Path
 from functools import lru_cache as cache
 
 from PIL import Image
 
 from ...base import POSMImplementation
+from ...native import Bundle
 from ...schema import CreateParams, GenerationResult
+from ...template_contract import legacy_background
 from ...util import image_to_base64, load_image_from_url
 from ...util.browser import (
     ALIBABA_PUHUITI_FONT_FACES,
@@ -1133,7 +1136,10 @@ def get_layout(
 class Pipeline(POSMImplementation):
     @property
     def template_path(self) -> str:
-        return "resources/templates/sasa_202604002.png"
+        legacy = legacy_background(self.name)
+        if legacy is not None:
+            return str(legacy)
+        return str(Bundle.configured().root / "assets" / "templates" / "sasa_202607006.png")
 
     def get_template(self) -> Image.Image:
         return get_template(self.template_path)

@@ -9,9 +9,10 @@ layout, preserving their artwork and semantic template identity. The service pre
 `promotion_list: list[dict]`, `product: list[list[str]]`, and the existing result
 fields: `id`, `reference_jpg`, `fabric_model`, `message`, `successful`.
 
-Layout source and editable configuration belong to a separate private repository.
-This repository ships Python normalization, image loading, transport adapters,
-and compiled renderer bundles. No browser is needed at runtime.
+Layout and Sasa sugarcoating source live in this repository under
+`app/templates/sasa` and `app/renderer`. The compiled renderer bundle owns only
+primitive rasterization and Fabric preview output. No browser is needed at
+runtime.
 
 ## Run
 
@@ -31,7 +32,8 @@ python templates_api.py
 The local HTTP adapter serves `/health`, `/create`, `/api/create` on port 8123.
 `render_service.render_payload` accepts exactly one render item. The unchanged
 Lambda handler and worker retain the existing claim/callback and retry contract.
-The native `POSMImplementation` adapter replaces the browser lifecycle.
+The native `POSMImplementation` adapter sends the Python-produced Fabric
+primitive canvas to the Skia renderer; it replaces the browser lifecycle.
 
 Images remain HTTP(S), data URLs, or local paths at the Python boundary. The
 adapter normalizes and bounds them before calling the executable. A single 09001

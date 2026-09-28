@@ -61,10 +61,17 @@ class Bundle:
         return manifest
 
     def invoke(self, request: dict[str, Any], *, background_path: Path | None = None) -> dict[str, Any]:
-        manifest = self.verify()
-        if manifest.get("development") is not False:
-            raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
-        executable = contained_file(self.root, manifest["executable"])
+        development_executable = os.getenv("POSM_RENDERER_EXE")
+        if development_executable:
+            executable = Path(development_executable).resolve()
+            if not executable.is_file():
+                raise RendererError("RENDERER_START_FAILED")
+            manifest = {"development": False, "executable": executable.name}
+        else:
+            manifest = self.verify()
+            if manifest.get("development") is not False:
+                raise RendererError("RENDERER_DEVELOPMENT_BUNDLE")
+            executable = contained_file(self.root, manifest["executable"])
         request_bytes = (json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
         if len(request_bytes) > 2 * 1024 * 1024:
             raise RendererError("RENDERER_REQUEST_LIMIT")
@@ -98,7 +105,7 @@ class Bundle:
     @contextmanager
     def _assets(self, background_path: Path | None):
         if background_path is None:
-            yield self.root / "assets"
+            yield Path(os.getenv("POSM_RENDERER_ASSETS", str(self.root / "assets"))).resolve()
             return
         # Legacy 07002-07005 share the existing 07006 layout and differ only in
         # artwork. Stage an isolated asset tree; never modify a pinned bundle.
@@ -109,7 +116,7 @@ class Bundle:
             raise RendererError("LEGACY_BACKGROUND_CHECKSUM")
         with tempfile.TemporaryDirectory(prefix="posm-assets-") as directory:
             target = Path(directory) / "assets"
-            shutil.copytree(self.root / "assets", target)
+            shutil.copytree(Path(os.getenv("POSM_RENDERER_ASSETS", str(self.root / "assets"))).resolve(), target)
             shutil.copyfile(background_path, target / "templates" / "sasa_202607006.png")
             yield target
 

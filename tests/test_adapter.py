@@ -12,6 +12,8 @@ from app.native import Bundle, RendererError
 from app.schema import CreateParams
 from app.templates import get_pipeline
 
+BUNDLE_ROOT = Path(__file__).resolve().parents[1] / "renderer" / "windows-x86_64"
+
 
 class AdapterTests(unittest.TestCase):
     @staticmethod
@@ -48,7 +50,7 @@ class AdapterTests(unittest.TestCase):
             "gwp_image": ["shared-image"], "gwp_text": "Gift $99",
         }], product=[["shared-image"]])
         pipeline = get_pipeline(params.template)
-        with patch.object(Bundle, "configured", return_value=Bundle(Path.cwd(), "test")), \
+        with patch.object(Bundle, "configured", return_value=Bundle(BUNDLE_ROOT, "test")), \
              patch.object(Bundle, "invoke", invoke), \
              patch.object(pipeline, "maybe_load_image_from_url", side_effect=lambda _: Image.new("RGBA", (8, 12), "red")):
             result = pipeline.run(params)
@@ -89,7 +91,7 @@ class AdapterTests(unittest.TestCase):
             "gwp_image": ["bad-image"], "gwp_text": "",
         }], product=[["bad-image"]])
         pipeline = get_pipeline(params.template)
-        with patch.object(Bundle, "configured", return_value=Bundle(Path.cwd(), "test")), \
+        with patch.object(Bundle, "configured", return_value=Bundle(BUNDLE_ROOT, "test")), \
              patch.object(Bundle, "invoke", invoke), \
              patch.object(pipeline, "maybe_load_image_from_url", return_value=None):
             result = pipeline.run(params)

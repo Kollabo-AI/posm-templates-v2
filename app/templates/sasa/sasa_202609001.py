@@ -9,6 +9,7 @@ from typing import Literal
 from PIL import Image
 
 from ...base import POSMImplementation
+from ...native import Bundle
 from ...schema import CreateParams, GenerationResult
 from ...renderer import (
     Affine, BoundingBox, Boxed, Circle, CircleStyle, DiagonalLine, Empty,
@@ -32,7 +33,10 @@ from ...util.browser import (
 
 
 TEMPLATE = "sasa_202609001"
-ASSET_ROOT = Path(__file__).resolve().parents[2] / "resources"
+
+
+def asset_root() -> Path:
+    return Bundle.configured().root / "assets"
 PINK = "#E7168A"
 YELLOW = "#F7EF53"
 BLACK = "#000000"
@@ -457,7 +461,7 @@ def _discount_top(preferred: float, left: float, copy: LayoutElement,
 
 @lru_cache(maxsize=2)
 def _asset(relative: str) -> Image.Image:
-    with Image.open(ASSET_ROOT / relative) as image:
+    with Image.open(asset_root() / relative) as image:
         return image.convert("RGBA")
 
 

@@ -73,7 +73,7 @@ def smoke(output: Path | None = None) -> None:
         assert canvas["version"] == "6.6.5" and canvas["objects"]
         bindings = []
         def visit(node):
-            if "posmBinding" in node:
+            if node.get("posmBinding") is not None:
                 bindings.append(node["posmBinding"])
             for child in node.get("objects", []): visit(child)
         for node in canvas["objects"]: visit(node)
