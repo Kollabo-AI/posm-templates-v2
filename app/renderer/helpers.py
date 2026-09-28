@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ..types import FabricCanvas, FabricObject, FabricGroup, FabricImage, FabricObjects
-from ..util import image_to_base64
+from ..util import bounded_image_to_base64
 from .box import BoundingBox
 from .primitives import *
 from .. import logger
@@ -20,7 +20,7 @@ def _render_image(image_element: ImageBox) -> FabricObjects:
     image_width, image_height = image_element.image.size
     return [
         FabricImage(
-            src=image_to_base64(image_element.image.convert("RGBA"), format="PNG"),
+            src=bounded_image_to_base64(image_element.image.convert("RGBA"), format="PNG"),
             name=image_element.name,
             left=placement.l,
             top=placement.t,
