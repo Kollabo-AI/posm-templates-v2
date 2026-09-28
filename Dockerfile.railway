@@ -22,4 +22,4 @@ RUN chmod 0555 renderer/linux-x86_64/posm-renderer \
     && python -c "from app.native import Bundle; from app.template_contract import NATIVE_TEMPLATES; result = Bundle.configured().invoke({'protocol_version': 1, 'request_id': 'railway-build', 'method': 'describe'}); assert result['devtools'] is False; assert {t['id'] for t in result['templates']} == set(NATIVE_TEMPLATES)"
 
 EXPOSE 8080
-CMD ["python", "templates_api.py"]
+CMD ["sh", "-c", "POSM_TEMPLATES_PORT=\"${PORT:-8080}\" exec python templates_api.py"]
