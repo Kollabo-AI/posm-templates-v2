@@ -373,7 +373,7 @@ def _handle_one_mouth_price(
         ),
     )
     logo_image = Image.open(
-        "resources/icons/sasa_202607001_onemouthprice.png"
+        Bundle.configured().root / "assets" / "icons" / "sasa_202607001_onemouthprice.png"
     ).convert("RGBA")
     logo = ImageBox(
         image=logo_image,
