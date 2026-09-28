@@ -50,6 +50,7 @@ def verify_files() -> None:
 def smoke(output: Path | None = None) -> None:
     described = Bundle.configured().invoke({"protocol_version": 1, "request_id": "release-gate", "method": "describe"})
     assert described["devtools"] is False
+    assert "primitive_raster" in described["features"]
     described_ids = {entry["id"] for entry in described["templates"]}
     # A pinned renderer may retain a deprecated template for compatibility; the
     # public v2 contract only requires every active template to be available.
