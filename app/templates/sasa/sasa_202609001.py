@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from ...base import POSMImplementation
 from ...renderer.runtime import Bundle
@@ -75,6 +75,12 @@ def _bounds(element: LayoutElement) -> BoundingBox:
     if box is None:
         raise ValueError("Expected visible layout content")
     return box
+
+
+def _occupied_mask(elements: list[LayoutElement]) -> Image.Image:
+    objects = [obj for element in elements for obj in element.render()]
+    canvas = FabricCanvas(objects=objects, width=TEMPLATE_SIZE[0], height=TEMPLATE_SIZE[1])
+    return rasterize_fabric(canvas).getchannel("A").filter(ImageFilter.MaxFilter(21))
 
 
 def _style(
@@ -303,13 +309,48 @@ def _price(value: str | None, star: bool, bottom: float, max_width: float,
     lines = _bind(lines, index, "star_price" if star else "price_vip")
     if not star:
         return _move(lines, CONTENT.l+_px(12), bottom-_bounds(lines).h)
+    logo_box = BoundingBox(l=CONTENT.l, t=bottom-ONE_MOUTH_SIZE,
+                           w=ONE_MOUTH_SIZE, h=ONE_MOUTH_SIZE)
     logo = ImageBox(
         image=_asset("icons/sasa_202607001_onemouthprice.png"),
-        box=BoundingBox(l=CONTENT.l, t=bottom-ONE_MOUTH_SIZE,
-                        w=ONE_MOUTH_SIZE, h=ONE_MOUTH_SIZE),
+        box=logo_box,
         name="One-mouth price background",
     )
-    lines = _move(lines, CONTENT.l+_px(40), bottom-ONE_MOUTH_SIZE+_px(200))
+    source_box = _bounds(lines)
+    line_group = lines.element
+    if isinstance(line_group, SemanticTextBinding):
+        line_group = line_group.element
+    rows = line_group.elements if isinstance(line_group, Group) else []
+    if len(rows) == 2:
+        rows = [
+            _move(rows[0], 0, _px(80)),
+            rows[1],
+        ]
+        lines = lines.model_copy(update={"element": Group(elements=rows)})
+        source_box = _bounds(lines)
+        scale_x = 1.0
+        scale_y = 0.8
+        first_row = _bounds(rows[0])
+        lines = Affine(
+            element=lines,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            translate_x=logo_box.l+_px(35)-source_box.l*scale_x,
+            translate_y=logo_box.t+_px(240)-first_row.t*scale_y,
+        )
+    else:
+        max_width = logo_box.w-_px(24)
+        max_height = logo_box.h-_px(112)
+        scale = min(1.0, max_width/source_box.w, max_height/source_box.h)
+        fitted_width = source_box.w*scale
+        fitted_height = source_box.h*scale
+        lines = Affine(
+            element=lines,
+            scale_x=scale,
+            scale_y=scale,
+            translate_x=logo_box.cx-fitted_width/2-source_box.l*scale,
+            translate_y=logo_box.t+_px(100)+(max_height-fitted_height)/2-source_box.t*scale,
+        )
     return Group(elements=[logo, lines])
 
 
@@ -347,14 +388,17 @@ def _discount(value: str, top: float, left: float, index: int, diameter: float) 
 
 
 def _products(images: list[Image.Image], box: BoundingBox,
-              avoid: list[BoundingBox], name: str, *, top_right: bool = False) -> LayoutElement:
+              avoid: list[BoundingBox], name: str, *, top_right: bool = False,
+              occupied_mask: Image.Image | None = None) -> LayoutElement:
     if not images:
         return Empty()
     border = int(sum(TEMPLATE_SIZE)/100)
     search_box = BoundingBox(l=box.l-border, t=box.t-border,
                              r=box.r+border, b=box.b+border)
     result = PreparedProduct(images).place(
-        canvas_box=search_box, template_size=TEMPLATE_SIZE, occupied_boxes=avoid,
+        canvas_box=search_box, template_size=TEMPLATE_SIZE,
+        occupied_boxes=[] if occupied_mask is not None else avoid,
+        occupied_mask=occupied_mask,
         anchor_x=box.r if top_right else box.cx, anchor_y=box.t if top_right else box.cy,
         anchor_position="top-right" if top_right else "center", target_product_size=10.0,
         allow_overlap_fallback=False, name=name,
@@ -418,13 +462,23 @@ def panel_layout(fields: Promotion, images: list[Image.Image], gifts: list[Image
         elements.append(ImageBox(image=icon, box=ICON_BOX, name="Exclusive icon"))
     discount = optional_text(fields, "discount_ball")
     if discount:
-        diameter = DISCOUNT_DIAMETER+_px(30) if "再" in discount else DISCOUNT_DIAMETER
+        base_diameter = DISCOUNT_DIAMETER+_px(30) if "再" in discount else DISCOUNT_DIAMETER
         price_top = _bounds(price).t if price else bottom
         left = CONTENT.l if star else CONTENT.l+_px(24)
-        preferred = price_top-diameter+_px(44 if star else -28)
-        if not star:
-            preferred = min(preferred, (_bounds(copy).b+price_top-diameter)/2)
-        top = _discount_top(preferred, left, copy, price, bool(star), diameter)
+        top = None
+        diameter = base_diameter
+        for factor in (1.0, 0.94, 0.88, 0.82, 0.76, 0.70, 0.64, 0.58):
+            diameter = base_diameter*factor
+            preferred = price_top-diameter+_px(44 if star else -28)
+            if not star:
+                preferred = min(preferred, (_bounds(copy).b+price_top-diameter)/2)
+            try:
+                top, left = _discount_top(preferred, left, copy, price, bool(star), diameter)
+                break
+            except ValueError:
+                continue
+        if top is None:
+            raise ValueError("Copy and price leave no room for the measured discount disc")
         ball = _discount(discount, top, left, index, diameter)
         elements.append(ball)
     elements.append(price)
@@ -434,26 +488,34 @@ def panel_layout(fields: Promotion, images: list[Image.Image], gifts: list[Image
         l=CONTENT.l, t=product_top, r=CONTENT.r, b=bottom,
     )
     occupied = [box for element in elements for box in element.placement_boxes()]
-    elements.append(_products(images, product_box, occupied, "Product image", top_right=True))
+    occupied_mask = _occupied_mask(elements)
+    elements.append(_products(
+        images, product_box, occupied, "Product image", top_right=True,
+        occupied_mask=occupied_mask,
+    ))
     return Group(elements=elements)
 
 
 def _discount_top(preferred: float, left: float, copy: LayoutElement,
-                  price: LayoutElement, star: bool, diameter: float) -> float:
+                  price: LayoutElement, star: bool, diameter: float) -> tuple[float, float]:
     radius = diameter/2
     occupied = copy.placement_boxes() + ([] if star else price.placement_boxes())
-    for step in range(0, 500, 2):
-        distance = _px(step)
-        for top in (preferred-distance, preferred+distance):
-            if top < CONTENT.t+_px(180) or top+diameter > CONTENT.b:
-                continue
-            if star and top+diameter > _bounds(price).t+_px(56):
-                continue
-            cx, cy = left+radius, top+radius
-            if all(math.hypot(cx-min(max(cx, box.l-_px(8)), box.r+_px(8)),
-                              cy-min(max(cy, box.t-_px(8)), box.b+_px(8))) >= radius
-                   for box in occupied):
-                return top
+    horizontal_positions = [left, CONTENT.r-diameter-_px(8), CONTENT.cx-diameter/2]
+    for candidate_left in dict.fromkeys(horizontal_positions):
+        if candidate_left < CONTENT.l or candidate_left+diameter > CONTENT.r:
+            continue
+        for step in range(0, 500, 2):
+            distance = _px(step)
+            for top in (preferred-distance, preferred+distance):
+                if top < CONTENT.t+_px(180) or top+diameter > CONTENT.b:
+                    continue
+                if star and top+diameter > _bounds(price).t+_px(56):
+                    continue
+                cx, cy = candidate_left+radius, top+radius
+                if all(math.hypot(cx-min(max(cx, box.l-_px(8)), box.r+_px(8)),
+                                  cy-min(max(cy, box.t-_px(8)), box.b+_px(8))) >= radius
+                       for box in occupied):
+                    return top, candidate_left
     raise ValueError("Copy and price leave no room for the measured discount disc")
 
 

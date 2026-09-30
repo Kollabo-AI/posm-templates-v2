@@ -859,8 +859,8 @@ class _ProductImageGroup(LayoutElement):
         grouped_objects: FabricObjects = [
             fabric_object.model_copy(
                 update={
-                    "left": fabric_object.left - group_box.cx,
-                    "top": fabric_object.top - group_box.cy,
+                    "left": fabric_object.left - group_box.l,
+                    "top": fabric_object.top - group_box.t,
                     "name": object_names[index],
                 },
                 deep=True,
@@ -956,6 +956,7 @@ class PreparedProduct:
         allow_overlap_fallback: bool = True,
         anchor_position: AnchorPosition = "center",
         name: str = "Product image",
+        occupied_mask: Image.Image | np.ndarray | None = None,
     ) -> LayoutElement:
         product_shot = self._prepare()
 
@@ -988,6 +989,7 @@ class PreparedProduct:
             scale_factor=scale_factor,
             allow_overlap_fallback=allow_overlap_fallback,
             anchor_position=anchor_position,
+            occupied_mask=occupied_mask,
         )
 
 
@@ -1001,6 +1003,7 @@ def Product(
     target_product_size: float = 0.2,
     allow_overlap_fallback: bool = True,
     anchor_position: AnchorPosition = "center",
+    occupied_mask: Image.Image | np.ndarray | None = None,
 ) -> LayoutElement:
     """Arrange product images as a collage and place it near an anchor."""
     prepared_product = (
@@ -1017,4 +1020,5 @@ def Product(
         target_product_size=target_product_size,
         allow_overlap_fallback=allow_overlap_fallback,
         anchor_position=anchor_position,
+        occupied_mask=occupied_mask,
     )
