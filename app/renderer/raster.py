@@ -11,10 +11,12 @@ from typing import Any
 
 from PIL import Image
 
+from ..util import RENDERER_MAX_IMAGE_BYTES, RENDERER_MAX_IMAGE_DIMENSION
 from .runtime import Bundle, RendererError, contained_file
 
 
 _ROOT = Path(__file__).resolve().parents[2]
+RENDERER_MAX_RESOURCE_COUNT = 32
 
 
 def _as_json(value: Any) -> Any:
@@ -27,8 +29,9 @@ def _as_json(value: Any) -> Any:
     return value
 
 
-def _externalize_images(canvas: dict[str, Any], directory: Path) -> dict[str, dict[str, Any]]:
+def _externalize_images(canvas: dict[str, Any], directory: Path) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
     resources: dict[str, dict[str, Any]] = {}
+    labels: dict[str, str] = {}
     resource_ids: dict[str, str] = {}
 
     def visit(value: Any) -> None:
@@ -55,6 +58,7 @@ def _externalize_images(canvas: dict[str, Any], directory: Path) -> dict[str, di
                         "height": height,
                     }
                     resource_ids[digest] = resource_id
+                    labels[resource_id] = str(value.get("name") or "")
                 value["src"] = resource_id
             for child in value.values():
                 visit(child)
@@ -63,7 +67,29 @@ def _externalize_images(canvas: dict[str, Any], directory: Path) -> dict[str, di
                 visit(child)
 
     visit(canvas)
-    return resources
+    return resources, labels
+
+
+def _validate_resources(resources: dict[str, dict[str, Any]], labels: dict[str, str]) -> None:
+    if len(resources) > RENDERER_MAX_RESOURCE_COUNT:
+        raise RendererError(
+            f"IMAGE_LIMIT: {len(resources)} images in one poster, above the renderer limit of {RENDERER_MAX_RESOURCE_COUNT}"
+        )
+    for resource_id, record in resources.items():
+        label = labels.get(resource_id, "")
+        subject = f"{resource_id} '{label}'" if label else resource_id
+        width, height = record["width"], record["height"]
+        if width <= 0 or height <= 0 or width > RENDERER_MAX_IMAGE_DIMENSION or height > RENDERER_MAX_IMAGE_DIMENSION:
+            raise RendererError(
+                f"IMAGE_LIMIT: {subject} is {width}x{height}, "
+                f"outside the renderer limit of {RENDERER_MAX_IMAGE_DIMENSION} px per side"
+            )
+        size = Path(record["path"]).stat().st_size
+        if size > RENDERER_MAX_IMAGE_BYTES:
+            raise RendererError(
+                f"IMAGE_LIMIT: {subject} is {size / (1024 * 1024):.2f} MiB, "
+                f"above the renderer limit of {RENDERER_MAX_IMAGE_BYTES // (1024 * 1024)} MiB"
+            )
 
 
 def rasterize_fabric(canvas: Any) -> Image.Image:
@@ -76,7 +102,8 @@ def rasterize_fabric(canvas: Any) -> Image.Image:
     directory.mkdir()
     try:
         payload = _as_json(canvas)
-        resources = _externalize_images(payload, directory)
+        resources, labels = _externalize_images(payload, directory)
+        _validate_resources(resources, labels)
         request = {
             "protocol_version": 1,
             "request_id": request_id,

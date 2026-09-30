@@ -3,4 +3,5 @@
 # 0.1.2: revision-aware layout memory and typed native diagnostics metadata.
 # 0.2.0: Python Sasa layout with native Skia primitive rasterization.
 # 0.2.1: resource-backed primitive images and standard logging compatibility.
-ENDPOINT_VERSION = "0.2.1"
+# 0.2.2: bounded canvas image embedding and detailed resource limit diagnostics.
+ENDPOINT_VERSION = "0.2.2"

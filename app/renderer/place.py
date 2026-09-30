@@ -58,6 +58,7 @@ def predict_mask_placement(
     anchor_y: float,
     debug_template: Image.Image | None = None,
     anchor_position: AnchorPosition = "center",
+    occupied_mask: np.ndarray | Image.Image | None = None,
 ) -> Result[tuple[int, int, float]]:
     logger.debug("Starting mask placement prediction.")
 
@@ -65,7 +66,17 @@ def predict_mask_placement(
     template_width, template_height = template_size
 
     box_margins = 10
-    occupied_mask = np.zeros((template_height, template_width), dtype=np.float32)
+    if occupied_mask is None:
+        occupied_pixels = np.zeros((template_height, template_width), dtype=np.float32)
+    else:
+        occupied_pixels = np.asarray(occupied_mask.convert("L") if isinstance(occupied_mask, Image.Image) else occupied_mask)
+        if occupied_pixels.shape != (template_height, template_width):
+            raise ValueError(
+                "Occupied mask dimensions must match the template size: "
+                f"expected {(template_height, template_width)}, got {occupied_pixels.shape}"
+            )
+        occupied_pixels = (occupied_pixels > 0).astype(np.float32)
+    occupied_mask = occupied_pixels
 
     for occupied_box in occupied_boxes:
         left = max(0, int(occupied_box.l - box_margins))
@@ -161,9 +172,20 @@ def _get_occupied_mask(
     template_size: tuple[int, int],
     box_margins: int,
     border_margins: int,
+    occupied_mask: np.ndarray | Image.Image | None = None,
 ) -> np.ndarray:
     template_width, template_height = template_size
-    occupied_mask = np.zeros((template_height, template_width), dtype=np.float32)
+    if occupied_mask is None:
+        occupied_pixels = np.zeros((template_height, template_width), dtype=np.float32)
+    else:
+        occupied_pixels = np.asarray(occupied_mask.convert("L") if isinstance(occupied_mask, Image.Image) else occupied_mask)
+        if occupied_pixels.shape != (template_height, template_width):
+            raise ValueError(
+                "Occupied mask dimensions must match the template size: "
+                f"expected {(template_height, template_width)}, got {occupied_pixels.shape}"
+            )
+        occupied_pixels = (occupied_pixels > 0).astype(np.float32)
+    occupied_mask = occupied_pixels
 
     for occupied_box in occupied_boxes:
         left = max(0, int(occupied_box.l - box_margins))
@@ -206,6 +228,7 @@ def _fallback_mask_placement(
     anchor_x: float,
     anchor_y: float,
     anchor_position: AnchorPosition = "center",
+    occupied_mask: np.ndarray | Image.Image | None = None,
 ) -> BoundingBox:
     anchor_factor_x, anchor_factor_y = anchor_factors(anchor_position)
     scaled_mask = _scale_mask_to_canvas(mask, canvas_box, template_size, scale_factor)
@@ -217,6 +240,7 @@ def _fallback_mask_placement(
         template_size=template_size,
         box_margins=10,
         border_margins=border_margins,
+        occupied_mask=occupied_mask,
     )
     mask_binary = make_binary_mask(scaled_mask).astype(np.float32)
     kernel = mask_binary[::-1, ::-1]
@@ -348,15 +372,13 @@ def _place_mask_scale_decay(
     anchor_position: AnchorPosition = "center",
     max_anchor_loss: float | None = 0.1,
     use_deferred_anchor_loss: bool = False,
+    occupied_mask: np.ndarray | Image.Image | None = None,
 ) -> Result[BoundingBox]:
     logger.debug("Starting mask placement with scale decay.")
 
     alpha = 1.0
     alpha_decay = 0.95
     alpha_decay_base = 0.1 if not fix_scale else 1.0
-
-    if not occupied_boxes:
-        logger.warning("No occupied boxes provided in mask placement with scale decay")
 
     template_width, template_height = template_size
     coverage = calculate_coverage_area(
@@ -385,6 +407,7 @@ def _place_mask_scale_decay(
             anchor_y,
             debug_template=debug_template,
             anchor_position=anchor_position,
+            occupied_mask=occupied_mask,
         )
 
         if result.is_error():
@@ -432,6 +455,7 @@ def place_mask(
     debug_template: Image.Image | None = None,
     anchor_position: AnchorPosition = "center",
     allow_overlap_fallback: bool = True,
+    occupied_mask: np.ndarray | Image.Image | None = None,
 ) -> BoundingBox:
     """Place a mask by its selected anchor while avoiding occupied boxes."""
     logger.debug(f"Preprocessed mask with size {mask.size}.")
@@ -448,6 +472,7 @@ def place_mask(
         debug_template=debug_template,
         anchor_position=anchor_position,
         use_deferred_anchor_loss=not allow_overlap_fallback,
+        occupied_mask=occupied_mask,
     )
 
     if prediction.is_error():
@@ -470,6 +495,7 @@ def place_mask(
             anchor_x=anchor_x,
             anchor_y=anchor_y,
             anchor_position=anchor_position,
+            occupied_mask=occupied_mask,
         )
 
     return prediction.unwrap()

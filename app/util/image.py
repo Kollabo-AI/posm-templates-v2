@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import math
 from collections import OrderedDict
 from dataclasses import dataclass
 from threading import RLock
@@ -15,6 +16,10 @@ from .. import logger
 IMAGE_CACHE_MAX_ITEMS = 32
 IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024
 IMAGE_CACHE_MAX_DECODED_BYTES = 16 * 1024 * 1024
+
+# Mirrors the per-image resource limits enforced by the native renderer.
+RENDERER_MAX_IMAGE_BYTES = 5 * 1024 * 1024
+RENDERER_MAX_IMAGE_DIMENSION = 2000
 
 
 @dataclass(frozen=True)
@@ -149,30 +154,68 @@ def _redacted_cache_key(url: str) -> str:
     return url.split("?", 1)[0].split("#", 1)[0]
 
 
-def image_to_base64(image: Image.Image, format: str = "PNG") -> str:
-    """
-    Converts a PIL Image into a base64-encoded data URL string.
-
-    Args:
-        image (Image.Image): The PIL image object.
-        format (str): The format to save the image as (e.g., 'PNG', 'JPEG', 'WEBP').
-                      Defaults to 'PNG'.
-
-    Returns:
-        str: A string suitable for stuff.
-             e.g., "data:image/png;base64,iVBORw0KG..."
-    """
-
+def _encode_image(image: Image.Image, format: str, quality: int | None = None) -> bytes:
     buffer = io.BytesIO()
     if format.upper() == "PNG":
         image.save(buffer, format=format, compress_level=1)
-    else:
+    elif quality is None:
         image.save(buffer, format=format)
-    img_bytes = buffer.getvalue()
-    base64_encoded = base64.b64encode(img_bytes).decode('utf-8')
+    else:
+        image.save(buffer, format=format, quality=quality)
+    return buffer.getvalue()
+
+
+def _data_url(image_bytes: bytes, format: str) -> str:
+    base64_encoded = base64.b64encode(image_bytes).decode('utf-8')
     mime_type = f"image/{format.lower()}"
-    url = f"data:{mime_type};base64,{base64_encoded}"
-    return url
+    return f"data:{mime_type};base64,{base64_encoded}"
+
+
+def image_to_base64(image: Image.Image, format: str = "PNG") -> str:
+    """Converts a PIL Image into a base64-encoded data URL string."""
+    return _data_url(_encode_image(image, format), format)
+
+
+def _clamp_dimensions(image: Image.Image) -> Image.Image:
+    scale = min(1.0, RENDERER_MAX_IMAGE_DIMENSION / image.width, RENDERER_MAX_IMAGE_DIMENSION / image.height)
+    if scale == 1.0:
+        return image
+    size = (max(1, math.floor(image.width * scale)), max(1, math.floor(image.height * scale)))
+    return image.resize(size, Image.Resampling.LANCZOS)
+
+
+def _is_opaque(image: Image.Image) -> bool:
+    return "A" not in image.getbands() or image.getchannel("A").getextrema() == (255, 255)
+
+
+def _encode_within_limit(image: Image.Image, format: str, quality: int | None = None) -> bytes:
+    payload = _encode_image(image, format, quality)
+    width, height = image.size
+    while len(payload) > RENDERER_MAX_IMAGE_BYTES:
+        ratio = math.sqrt(RENDERER_MAX_IMAGE_BYTES / len(payload))
+        size = (max(1, math.floor(width * ratio)), max(1, math.floor(height * ratio)))
+        if size == (width, height):
+            size = (max(1, width - 1), max(1, height - 1))
+        width, height = size
+        image = image.resize(size, Image.Resampling.LANCZOS)
+        payload = _encode_image(image, format, quality)
+    return payload
+
+
+def bounded_image_to_base64(image: Image.Image, format: str = "PNG") -> str:
+    """
+    Encodes a canvas image within the renderer's resource limits: at most
+    RENDERER_MAX_IMAGE_DIMENSION px per side and RENDERER_MAX_IMAGE_BYTES per
+    encoded image. Over-sized opaque PNGs fall back to JPEG so they keep their
+    resolution; images with transparency shrink until they fit.
+    """
+    bounded = _clamp_dimensions(image)
+    payload = _encode_image(bounded, format)
+    if len(payload) <= RENDERER_MAX_IMAGE_BYTES:
+        return _data_url(payload, format)
+    if format.upper() == "PNG" and _is_opaque(bounded):
+        return _data_url(_encode_within_limit(bounded.convert("RGB"), "JPEG", quality=85), "JPEG")
+    return _data_url(_encode_within_limit(bounded, format), format)
 
 
 def _fetch_image(url: str) -> Image.Image:
