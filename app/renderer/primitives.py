@@ -688,6 +688,7 @@ def Magnet(
     fix_scale: bool = False,
     anchor_position: AnchorPosition = "center",
     allow_overlap_fallback: bool = True,
+    occupied_mask: Image.Image | None = None,
 ) -> LayoutElement:
     """Place an element's selected anchor near a target while avoiding occupied regions."""
 
@@ -710,6 +711,7 @@ def Magnet(
         fix_scale=fix_scale,
         anchor_position=anchor_position,
         allow_overlap_fallback=allow_overlap_fallback,
+        occupied_mask=occupied_mask,
     )
     scale_x = placed_box.w / mask.width
     scale_y = placed_box.h / mask.height
